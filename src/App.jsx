@@ -1,16 +1,17 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import CsvImport from "./components/CsvImport";
 import StockGlobalTable from "./components/StockGlobalTable";
 import InternalOrderForm from "./components/InternalOrderForm";
 import DispatchPanel from "./components/DispatchPanel";
+import AuthPanel from "./components/AuthPanel";
 import { supabase } from "./lib/supabaseClient";
 
 const TABS = [
   { id: "stock", label: "Stock global", icon: "▤" },
   { id: "pedidos", label: "Nuevo pedido", icon: "↑" },
-  { id: "despacho", label: "Despacho", icon: "→" },
-  { id: "importar", label: "Importar CSV", icon: "⊕" },
+  { id: "despacho", label: "Despacho", icon: "→", requiresAuth: true },
+  { id: "importar", label: "Importar CSV", icon: "⊕", requiresAuth: true },
 ];
 
 function StatCard({ label, value, accent }) {
@@ -115,10 +116,99 @@ export default function App() {
   const [activeTab, setActiveTab] = useState("stock");
   const [toast, setToast] = useState(null);
   const [dispatchingId, setDispatchingId] = useState(null);
+  const [session, setSession] = useState(null);
+  const [authLoading, setAuthLoading] = useState(true);
+  const [authSubmitting, setAuthSubmitting] = useState(false);
+  const [credentials, setCredentials] = useState({ email: "", password: "" });
 
   const showToast = (message, type = "success") => {
     setToast({ message, type });
     setTimeout(() => setToast(null), 4000);
+  };
+
+  useEffect(() => {
+    let mounted = true;
+
+    supabase.auth.getSession().then(({ data, error }) => {
+      if (error) {
+        showToast(`Error al verificar sesión: ${error.message}`, "error");
+      }
+
+      if (mounted) {
+        setSession(data?.session ?? null);
+        setAuthLoading(false);
+      }
+    });
+
+    const {
+      data: { subscription },
+    } = supabase.auth.onAuthStateChange((_event, nextSession) => {
+      setSession(nextSession);
+    });
+
+    return () => {
+      mounted = false;
+      subscription.unsubscribe();
+    };
+  }, []);
+
+  useEffect(() => {
+    const tabRequiereAuth =
+      activeTab === "despacho" || activeTab === "importar";
+    if (tabRequiereAuth && !session) {
+      setActiveTab("stock");
+    }
+  }, [activeTab, session]);
+
+  const handleSignIn = async () => {
+    if (!credentials.email || !credentials.password) return;
+
+    setAuthSubmitting(true);
+    const { error } = await supabase.auth.signInWithPassword({
+      email: credentials.email,
+      password: credentials.password,
+    });
+    setAuthSubmitting(false);
+
+    if (error) {
+      showToast(`No se pudo iniciar sesión: ${error.message}`, "error");
+      return;
+    }
+
+    showToast("Sesión iniciada correctamente.");
+  };
+
+  const handleSignUp = async () => {
+    if (!credentials.email || !credentials.password) return;
+
+    setAuthSubmitting(true);
+    const { error } = await supabase.auth.signUp({
+      email: credentials.email,
+      password: credentials.password,
+    });
+    setAuthSubmitting(false);
+
+    if (error) {
+      showToast(`No se pudo crear la cuenta: ${error.message}`, "error");
+      return;
+    }
+
+    showToast(
+      "Cuenta creada. Revisá tu correo para confirmar si tu proyecto lo requiere.",
+    );
+  };
+
+  const handleSignOut = async () => {
+    setAuthSubmitting(true);
+    const { error } = await supabase.auth.signOut();
+    setAuthSubmitting(false);
+
+    if (error) {
+      showToast(`No se pudo cerrar sesión: ${error.message}`, "error");
+      return;
+    }
+
+    showToast("Sesión cerrada.");
   };
 
   const productosQuery = useQuery({
@@ -227,27 +317,47 @@ export default function App() {
           <StatCard label="Depósito central" value="1" accent="emerald" />
         </div>
 
+        <AuthPanel
+          session={session}
+          authLoading={authLoading}
+          authSubmitting={authSubmitting}
+          credentials={credentials}
+          onCredentialsChange={setCredentials}
+          onSignIn={handleSignIn}
+          onSignUp={handleSignUp}
+          onSignOut={handleSignOut}
+        />
+
         {/* ── Tabs ── */}
         <div className="mb-6 flex gap-1 rounded-xl border border-slate-800 bg-slate-900 p-1">
-          {TABS.map((tab) => (
-            <button
-              key={tab.id}
-              onClick={() => setActiveTab(tab.id)}
-              className={`relative flex flex-1 items-center justify-center gap-2 rounded-lg px-3 py-2 text-sm font-medium transition ${
-                activeTab === tab.id
-                  ? "bg-sky-600 text-white shadow"
-                  : "text-slate-400 hover:bg-slate-800 hover:text-slate-100"
-              }`}
-            >
-              <span className="text-base leading-none">{tab.icon}</span>
-              <span className="hidden sm:inline">{tab.label}</span>
-              {tab.id === "despacho" && pendingCount > 0 && (
-                <span className="flex h-4 w-4 items-center justify-center rounded-full bg-amber-400 text-[10px] font-black text-slate-900">
-                  {pendingCount}
-                </span>
-              )}
-            </button>
-          ))}
+          {TABS.map((tab) => {
+            const isLocked = Boolean(tab.requiresAuth && !session);
+            return (
+              <button
+                key={tab.id}
+                onClick={() => setActiveTab(tab.id)}
+                disabled={isLocked}
+                className={`relative flex flex-1 items-center justify-center gap-2 rounded-lg px-3 py-2 text-sm font-medium transition ${
+                  activeTab === tab.id
+                    ? "bg-sky-600 text-white shadow"
+                    : "text-slate-400 hover:bg-slate-800 hover:text-slate-100"
+                }`}
+              >
+                <span className="text-base leading-none">{tab.icon}</span>
+                <span className="hidden sm:inline">{tab.label}</span>
+                {isLocked && (
+                  <span className="rounded bg-slate-800 px-1.5 py-0.5 text-[10px] font-semibold text-slate-500">
+                    login
+                  </span>
+                )}
+                {tab.id === "despacho" && pendingCount > 0 && (
+                  <span className="flex h-4 w-4 items-center justify-center rounded-full bg-amber-400 text-[10px] font-black text-slate-900">
+                    {pendingCount}
+                  </span>
+                )}
+              </button>
+            );
+          })}
         </div>
 
         {/* ── Tab content ── */}
@@ -269,7 +379,13 @@ export default function App() {
             pedidos={transfersQuery.data}
             isLoading={transfersQuery.isLoading}
             dispatchingId={dispatchingId}
-            onDispatch={(pedido) => dispatchMutation.mutate(pedido)}
+            onDispatch={(pedido) => {
+              if (!session) {
+                showToast("Iniciá sesión para despachar pedidos.", "error");
+                return;
+              }
+              dispatchMutation.mutate(pedido);
+            }}
           />
         )}
         {activeTab === "importar" && (
