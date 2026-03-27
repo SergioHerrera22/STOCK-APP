@@ -8,6 +8,7 @@ export default function AuthPanel({
   onCredentialsChange,
   onSignIn,
   onSignUp,
+  onResetPassword,
   onSignOut,
 }) {
   const userEmail = useMemo(() => session?.user?.email ?? "", [session]);
@@ -88,6 +89,14 @@ export default function AuthPanel({
               className="rounded-lg border border-slate-700 bg-slate-950 px-4 py-2 text-sm font-semibold text-slate-200 transition hover:border-slate-500 hover:bg-slate-800 disabled:cursor-not-allowed disabled:opacity-60"
             >
               Crear cuenta
+            </button>
+            <button
+              type="button"
+              onClick={onResetPassword}
+              disabled={authSubmitting || !credentials.email}
+              className="rounded-lg border border-slate-700 bg-slate-950 px-4 py-2 text-sm font-semibold text-slate-200 transition hover:border-slate-500 hover:bg-slate-800 disabled:cursor-not-allowed disabled:opacity-60 md:col-span-4"
+            >
+              Recuperar contrasena
             </button>
           </form>
         )}

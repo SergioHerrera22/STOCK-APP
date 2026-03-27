@@ -18,6 +18,15 @@ function PendingBadge() {
   );
 }
 
+function InTransitBadge() {
+  return (
+    <span className="inline-flex items-center gap-1.5 rounded-full border border-sky-500/25 bg-sky-500/10 px-2.5 py-1 text-[11px] font-semibold text-sky-400">
+      <span className="h-1.5 w-1.5 rounded-full bg-sky-400" />
+      En transito
+    </span>
+  );
+}
+
 const DESTINO_LABELS = {
   sucursal_1: "CAPITAL",
   sucursal_2: "RAWSON",
@@ -28,7 +37,9 @@ export default function DispatchPanel({
   pedidos = [],
   isLoading,
   onDispatch,
+  onReceive,
   dispatchingId,
+  receivingId,
 }) {
   return (
     <div className="overflow-hidden rounded-xl border border-slate-800 bg-slate-900 shadow-sm">
@@ -67,7 +78,11 @@ export default function DispatchPanel({
               {/* Info */}
               <div className="min-w-0 flex-1">
                 <div className="mb-2 flex items-center gap-2">
-                  <PendingBadge />
+                  {pedido.estado === "pendiente" ? (
+                    <PendingBadge />
+                  ) : (
+                    <InTransitBadge />
+                  )}
                   <span className="text-xs text-slate-600">
                     {timeAgo(pedido.creado_at)}
                   </span>
@@ -92,11 +107,23 @@ export default function DispatchPanel({
 
               {/* Action */}
               <button
-                onClick={() => onDispatch(pedido)}
-                disabled={dispatchingId === pedido.id}
+                onClick={() =>
+                  pedido.estado === "pendiente"
+                    ? onDispatch(pedido)
+                    : onReceive(pedido)
+                }
+                disabled={
+                  dispatchingId === pedido.id || receivingId === pedido.id
+                }
                 className="shrink-0 rounded-lg bg-emerald-600 px-5 py-2.5 text-sm font-semibold text-white transition hover:bg-emerald-500 disabled:opacity-60"
               >
-                {dispatchingId === pedido.id ? "Despachando..." : "Despachar →"}
+                {dispatchingId === pedido.id
+                  ? "Despachando..."
+                  : receivingId === pedido.id
+                    ? "Recibiendo..."
+                    : pedido.estado === "pendiente"
+                      ? "Despachar ->"
+                      : "Marcar recibido"}
               </button>
             </div>
           ))

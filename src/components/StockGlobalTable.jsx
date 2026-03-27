@@ -44,30 +44,91 @@ function SkeletonRow() {
 
 export default function StockGlobalTable({ rows = [], isLoading }) {
   const [search, setSearch] = useState("");
+  const [marca, setMarca] = useState("todas");
+  const [categoria, setCategoria] = useState("todas");
+  const [criticalOnly, setCriticalOnly] = useState(false);
 
-  const filtered = useMemo(
-    () =>
-      rows.filter((r) => r.nombre.toLowerCase().includes(search.toLowerCase())),
-    [rows, search],
+  const marcas = useMemo(
+    () => ["todas", ...new Set(rows.map((r) => r.marca).filter(Boolean))],
+    [rows],
   );
+
+  const categorias = useMemo(
+    () => ["todas", ...new Set(rows.map((r) => r.categoria).filter(Boolean))],
+    [rows],
+  );
+
+  const isCriticalRow = (row) =>
+    LOCATIONS.some((loc) => (row[loc.key] ?? 0) <= 5);
+
+  const filtered = useMemo(() => {
+    const searchTerm = search.trim().toLowerCase();
+
+    return rows.filter((r) => {
+      const bySearch =
+        !searchTerm ||
+        r.nombre.toLowerCase().includes(searchTerm) ||
+        (r.marca ?? "").toLowerCase().includes(searchTerm) ||
+        (r.categoria ?? "").toLowerCase().includes(searchTerm);
+
+      const byMarca = marca === "todas" || r.marca === marca;
+      const byCategoria = categoria === "todas" || r.categoria === categoria;
+      const byCritical = !criticalOnly || isCriticalRow(r);
+
+      return bySearch && byMarca && byCategoria && byCritical;
+    });
+  }, [rows, search, marca, categoria, criticalOnly]);
 
   return (
     <div className="overflow-hidden rounded-xl border border-slate-800 bg-slate-900 shadow-sm">
       {/* Header */}
-      <div className="flex flex-col gap-3 border-b border-slate-800 px-5 py-4 md:flex-row md:items-center md:justify-between">
+      <div className="flex flex-col gap-3 border-b border-slate-800 px-5 py-4">
         <div>
           <h2 className="font-semibold text-slate-100">Stock global</h2>
           <p className="mt-0.5 text-xs text-slate-500">
             {rows.length} producto{rows.length !== 1 ? "s" : ""} en el sistema
           </p>
         </div>
-        <input
-          type="text"
-          placeholder="Buscar producto..."
-          value={search}
-          onChange={(e) => setSearch(e.target.value)}
-          className="w-full rounded-lg border border-slate-700 bg-slate-950 px-3 py-2 text-sm text-slate-100 placeholder-slate-600 transition focus:border-sky-600 focus:outline-none md:w-56"
-        />
+        <div className="grid gap-2 md:grid-cols-4">
+          <input
+            type="text"
+            placeholder="Buscar por producto, marca o categoria"
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            className="w-full rounded-lg border border-slate-700 bg-slate-950 px-3 py-2 text-sm text-slate-100 placeholder-slate-600 transition focus:border-sky-600 focus:outline-none"
+          />
+          <select
+            value={marca}
+            onChange={(e) => setMarca(e.target.value)}
+            className="w-full rounded-lg border border-slate-700 bg-slate-950 px-3 py-2 text-sm text-slate-100 transition focus:border-sky-600 focus:outline-none"
+          >
+            {marcas.map((item) => (
+              <option key={item} value={item}>
+                {item === "todas" ? "Todas las marcas" : item}
+              </option>
+            ))}
+          </select>
+          <select
+            value={categoria}
+            onChange={(e) => setCategoria(e.target.value)}
+            className="w-full rounded-lg border border-slate-700 bg-slate-950 px-3 py-2 text-sm text-slate-100 transition focus:border-sky-600 focus:outline-none"
+          >
+            {categorias.map((item) => (
+              <option key={item} value={item}>
+                {item === "todas" ? "Todas las categorias" : item}
+              </option>
+            ))}
+          </select>
+          <label className="flex items-center gap-2 rounded-lg border border-slate-700 bg-slate-950 px-3 py-2 text-sm text-slate-300">
+            <input
+              type="checkbox"
+              checked={criticalOnly}
+              onChange={(e) => setCriticalOnly(e.target.checked)}
+              className="h-4 w-4 rounded border-slate-600 bg-slate-900 text-amber-500"
+            />
+            Solo criticos
+          </label>
+        </div>
       </div>
 
       {/* Legend */}
@@ -123,7 +184,12 @@ export default function StockGlobalTable({ rows = [], isLoading }) {
                   className="border-b border-slate-800/40 transition-colors hover:bg-slate-800/25"
                 >
                   <td className="px-4 py-3 font-medium text-slate-100">
-                    {row.nombre}
+                    <div className="flex flex-col">
+                      <span>{row.nombre}</span>
+                      <span className="text-xs text-slate-500">
+                        {row.marca} • {row.categoria}
+                      </span>
+                    </div>
                   </td>
                   {LOCATIONS.map((loc) => (
                     <td

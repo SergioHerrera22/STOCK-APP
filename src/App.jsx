@@ -5,11 +5,12 @@ import StockGlobalTable from "./components/StockGlobalTable";
 import InternalOrderForm from "./components/InternalOrderForm";
 import DispatchPanel from "./components/DispatchPanel";
 import AuthPanel from "./components/AuthPanel";
+import { mapSupabaseError } from "./lib/errorMapper";
 import { supabase } from "./lib/supabaseClient";
 
 const TABS = [
   { id: "stock", label: "Stock global", icon: "▤" },
-  { id: "pedidos", label: "Nuevo pedido", icon: "↑" },
+  { id: "pedidos", label: "Nuevo pedido", icon: "↑", requiresAuth: true },
   { id: "despacho", label: "Despacho", icon: "→", requiresAuth: true },
   { id: "importar", label: "Importar CSV", icon: "⊕", requiresAuth: true },
 ];
@@ -68,7 +69,10 @@ async function fetchStockGlobal() {
     { data: productos, error: productError },
     { data: stock, error: stockError },
   ] = await Promise.all([
-    supabase.from("productos").select("id,nombre").order("nombre"),
+    supabase
+      .from("productos")
+      .select("id,nombre,marca,categoria")
+      .order("nombre"),
     supabase.from("stock").select("producto_id,ubicacion,cantidad"),
   ]);
 
@@ -81,6 +85,8 @@ async function fetchStockGlobal() {
       {
         id: product.id,
         nombre: product.nombre,
+        marca: product.marca,
+        categoria: product.categoria,
         sucursal_1: 0,
         sucursal_2: 0,
         sucursal_3: 0,
@@ -104,7 +110,7 @@ async function fetchPendingTransfers() {
     .select(
       "id,producto_id,cantidad,estado,destino,origen,creado_at,productos(nombre)",
     )
-    .eq("estado", "pendiente")
+    .in("estado", ["pendiente", "en_transito"])
     .order("creado_at", { ascending: true });
 
   if (error) throw error;
@@ -116,6 +122,7 @@ export default function App() {
   const [activeTab, setActiveTab] = useState("stock");
   const [toast, setToast] = useState(null);
   const [dispatchingId, setDispatchingId] = useState(null);
+  const [receivingId, setReceivingId] = useState(null);
   const [session, setSession] = useState(null);
   const [authLoading, setAuthLoading] = useState(true);
   const [authSubmitting, setAuthSubmitting] = useState(false);
@@ -154,7 +161,9 @@ export default function App() {
 
   useEffect(() => {
     const tabRequiereAuth =
-      activeTab === "despacho" || activeTab === "importar";
+      activeTab === "pedidos" ||
+      activeTab === "despacho" ||
+      activeTab === "importar";
     if (tabRequiereAuth && !session) {
       setActiveTab("stock");
     }
@@ -171,7 +180,7 @@ export default function App() {
     setAuthSubmitting(false);
 
     if (error) {
-      showToast(`No se pudo iniciar sesión: ${error.message}`, "error");
+      showToast(mapSupabaseError(error, "No se pudo iniciar sesion."), "error");
       return;
     }
 
@@ -189,7 +198,10 @@ export default function App() {
     setAuthSubmitting(false);
 
     if (error) {
-      showToast(`No se pudo crear la cuenta: ${error.message}`, "error");
+      showToast(
+        mapSupabaseError(error, "No se pudo crear la cuenta."),
+        "error",
+      );
       return;
     }
 
@@ -198,13 +210,38 @@ export default function App() {
     );
   };
 
+  const handleResetPassword = async () => {
+    if (!credentials.email) {
+      showToast("Ingresa un email para recuperar contrasena.", "error");
+      return;
+    }
+
+    setAuthSubmitting(true);
+    const { error } = await supabase.auth.resetPasswordForEmail(
+      credentials.email,
+    );
+    setAuthSubmitting(false);
+
+    if (error) {
+      showToast(
+        mapSupabaseError(error, "No se pudo enviar el email de recuperacion."),
+        "error",
+      );
+      return;
+    }
+
+    showToast("Email de recuperacion enviado.");
+  };
+
   const handleSignOut = async () => {
+    if (!window.confirm("Deseas cerrar la sesion actual?")) return;
+
     setAuthSubmitting(true);
     const { error } = await supabase.auth.signOut();
     setAuthSubmitting(false);
 
     if (error) {
-      showToast(`No se pudo cerrar sesión: ${error.message}`, "error");
+      showToast(mapSupabaseError(error, "No se pudo cerrar sesion."), "error");
       return;
     }
 
@@ -236,7 +273,7 @@ export default function App() {
       });
     },
     onError: (error) =>
-      showToast(`Error al generar pedido: ${error.message}`, "error"),
+      showToast(mapSupabaseError(error, "Error al generar pedido."), "error"),
   });
 
   const dispatchMutation = useMutation({
@@ -269,12 +306,47 @@ export default function App() {
       ]);
     },
     onError: (error) =>
-      showToast(`Error al despachar: ${error.message}`, "error"),
+      showToast(mapSupabaseError(error, "Error al despachar."), "error"),
     onSettled: () => setDispatchingId(null),
   });
 
-  const pendingCount = transfersQuery.data?.length ?? 0;
+  const receiveMutation = useMutation({
+    mutationFn: async (pedido) => {
+      setReceivingId(pedido.id);
+      const { error } = await supabase.rpc("receive_transfer", {
+        p_transferencia_id: pedido.id,
+      });
+      if (error) throw error;
+    },
+    onSuccess: async () => {
+      showToast("Transferencia recibida y stock acreditado.");
+      await Promise.all([
+        queryClient.invalidateQueries({
+          queryKey: ["transferencias-pendientes"],
+        }),
+        queryClient.invalidateQueries({ queryKey: ["stock-global"] }),
+      ]);
+    },
+    onError: (error) =>
+      showToast(
+        mapSupabaseError(error, "Error al recibir transferencia."),
+        "error",
+      ),
+    onSettled: () => setReceivingId(null),
+  });
+
+  const pendingCount = (transfersQuery.data ?? []).filter(
+    (item) => item.estado === "pendiente",
+  ).length;
+  const inTransitCount = (transfersQuery.data ?? []).filter(
+    (item) => item.estado === "en_transito",
+  ).length;
   const totalProducts = stockQuery.data?.length ?? 0;
+  const criticalProducts = (stockQuery.data ?? []).filter((row) =>
+    ["sucursal_1", "sucursal_2", "sucursal_3", "deposito_central"].some(
+      (key) => (row[key] ?? 0) <= 5,
+    ),
+  ).length;
 
   return (
     <div className="min-h-screen bg-slate-950 text-slate-100">
@@ -290,6 +362,12 @@ export default function App() {
               <p className="text-[11px] text-slate-500">Gestión de stock</p>
             </div>
           </div>
+
+          {session?.user?.email && (
+            <span className="rounded-lg border border-slate-700 bg-slate-900 px-2.5 py-1 text-xs text-slate-300">
+              {session.user.email}
+            </span>
+          )}
 
           {pendingCount > 0 && (
             <button
@@ -313,8 +391,16 @@ export default function App() {
             value={pendingCount}
             accent="amber"
           />
-          <StatCard label="Sucursales" value="3" accent="violet" />
-          <StatCard label="Depósito central" value="1" accent="emerald" />
+          <StatCard
+            label="Productos criticos"
+            value={criticalProducts}
+            accent="violet"
+          />
+          <StatCard
+            label="En transito"
+            value={inTransitCount}
+            accent="emerald"
+          />
         </div>
 
         <AuthPanel
@@ -325,6 +411,7 @@ export default function App() {
           onCredentialsChange={setCredentials}
           onSignIn={handleSignIn}
           onSignUp={handleSignUp}
+          onResetPassword={handleResetPassword}
           onSignOut={handleSignOut}
         />
 
@@ -379,12 +466,24 @@ export default function App() {
             pedidos={transfersQuery.data}
             isLoading={transfersQuery.isLoading}
             dispatchingId={dispatchingId}
+            receivingId={receivingId}
             onDispatch={(pedido) => {
               if (!session) {
-                showToast("Iniciá sesión para despachar pedidos.", "error");
+                showToast("Inicia sesion para despachar pedidos.", "error");
                 return;
               }
+              if (!window.confirm("Confirmas el despacho de este pedido?"))
+                return;
               dispatchMutation.mutate(pedido);
+            }}
+            onReceive={(pedido) => {
+              if (!session) {
+                showToast("Inicia sesion para recibir pedidos.", "error");
+                return;
+              }
+              if (!window.confirm("Confirmas la recepcion de este pedido?"))
+                return;
+              receiveMutation.mutate(pedido);
             }}
           />
         )}
