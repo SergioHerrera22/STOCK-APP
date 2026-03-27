@@ -1,4 +1,5 @@
-import { useMemo, useState } from "react";
+import { useMemo, useEffect, useState } from "react";
+import BarcodeScanner from "./BarcodeScanner";
 
 const DESTINOS = [
   { value: "sucursal_1", label: "CAPITAL" },
@@ -18,6 +19,19 @@ export default function InternalOrderForm({
   const [destino, setDestino] = useState("sucursal_1");
   const [cantidad, setCantidad] = useState(1);
   const [search, setSearch] = useState("");
+  const [scannerOpen, setScannerOpen] = useState(false);
+
+  // Keyboard shortcut for scanner (Ctrl+B)
+  useEffect(() => {
+    const handleKeyPress = (e) => {
+      if (e.ctrlKey && e.key.toLowerCase() === "b") {
+        e.preventDefault();
+        setScannerOpen(true);
+      }
+    };
+    window.addEventListener("keydown", handleKeyPress);
+    return () => window.removeEventListener("keydown", handleKeyPress);
+  }, []);
 
   const filteredProductos = useMemo(() => {
     const term = search.trim().toLowerCase();
@@ -104,13 +118,23 @@ export default function InternalOrderForm({
             <label className="block text-xs font-semibold uppercase tracking-wider text-slate-500">
               Producto
             </label>
-            <input
-              type="text"
-              placeholder="Buscar por código, nombre, marca, categoría o tamaño..."
-              value={search}
-              onChange={(e) => setSearch(e.target.value)}
-              className="mb-2 w-full rounded-lg border border-slate-700 bg-slate-950 px-3 py-2 text-sm text-slate-100 transition focus:border-sky-600 focus:outline-none"
-            />
+            <div className="flex gap-2">
+              <input
+                type="text"
+                placeholder="Buscar por código, nombre, marca, categoría o tamaño..."
+                value={search}
+                onChange={(e) => setSearch(e.target.value)}
+                className="flex-1 mb-2 rounded-lg border border-slate-700 bg-slate-950 px-3 py-2 text-sm text-slate-100 transition focus:border-sky-600 focus:outline-none"
+              />
+              <button
+                type="button"
+                onClick={() => setScannerOpen(true)}
+                title="Escanear código (Ctrl+B)"
+                className="mt-px mb-2 rounded-lg border border-slate-700 bg-slate-950 px-3 py-2 text-sm font-semibold text-slate-300 transition hover:border-indigo-600 hover:bg-slate-900 hover:text-indigo-300"
+              >
+                📷
+              </button>
+            </div>
             <select
               value={productoId}
               onChange={(e) => setProductoId(e.target.value)}
@@ -258,6 +282,15 @@ export default function InternalOrderForm({
           </div>
         </div>
       </form>
+
+      <BarcodeScanner
+        isOpen={scannerOpen}
+        onScan={(code) => {
+          setSearch(code);
+          setScannerOpen(false);
+        }}
+        onClose={() => setScannerOpen(false)}
+      />
     </div>
   );
 }

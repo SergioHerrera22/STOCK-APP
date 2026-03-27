@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
+import ExportButton from "./ExportButton";
 
 const EMPTY_FORM = {
   nombre: "",
@@ -183,13 +184,20 @@ export default function ProductsCrudTab({
                 {products.length !== 1 ? "s" : ""}
               </p>
             </div>
-            <input
-              type="text"
-              placeholder="Buscar por nombre, marca, categoría, tamaño o código..."
-              value={search}
-              onChange={(e) => setSearch(e.target.value)}
-              className="w-full rounded-xl border border-slate-700 bg-slate-950 px-3 py-2.5 text-sm text-slate-100 outline-none transition md:max-w-md focus:border-sky-500"
-            />
+            <div className="flex gap-2">
+              <ExportButton
+                data={filtered}
+                dataType="productos"
+                fileName="productos"
+              />
+              <input
+                type="text"
+                placeholder="Buscar por nombre, marca, categoría, tamaño o código..."
+                value={search}
+                onChange={(e) => setSearch(e.target.value)}
+                className="w-full rounded-xl border border-slate-700 bg-slate-950 px-3 py-2.5 text-sm text-slate-100 outline-none transition md:max-w-md focus:border-sky-500"
+              />
+            </div>
           </div>
         </div>
 

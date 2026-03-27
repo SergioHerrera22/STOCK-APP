@@ -1,4 +1,5 @@
 import { useState } from "react";
+import AdjustmentTemplates from "./AdjustmentTemplates";
 
 const UBICACIONES = [
   { value: "sucursal_1", label: "CAPITAL" },
@@ -116,6 +117,16 @@ export default function StockAdjustTab({ productos, onAdjust, isSubmitting }) {
               className="w-full rounded-lg border border-slate-700 bg-slate-950 px-3 py-2 text-sm text-slate-100 placeholder-slate-600 focus:border-sky-500 focus:outline-none"
             />
           </div>
+        </div>
+
+        {/* Quick templates for motivo */}
+        <div className="rounded-lg border border-slate-800 bg-slate-950/40 p-4">
+          <p className="mb-3 text-xs font-semibold uppercase tracking-wider text-slate-500">
+            Plantillas rápidas
+          </p>
+          <AdjustmentTemplates
+            onSelectTemplate={(template) => setMotivo(template)}
+          />
         </div>
 
         <div className="flex items-center gap-3">

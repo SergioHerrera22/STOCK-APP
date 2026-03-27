@@ -1,4 +1,5 @@
 import { useState, useMemo } from "react";
+import ExportButton from "./ExportButton";
 
 const LOCATIONS = [
   { key: "sucursal_1", label: "CAPITAL", accent: "text-violet-400" },
@@ -87,7 +88,7 @@ export default function StockGlobalTable({ rows = [], isLoading }) {
     <div className="overflow-hidden rounded-2xl border border-slate-800 bg-slate-900 shadow-sm">
       {/* Header + filters */}
       <div className="space-y-3 border-b border-slate-800 px-5 py-4">
-        <div className="flex items-center justify-between">
+        <div className="flex items-center justify-between gap-3">
           <div>
             <h2 className="font-semibold text-slate-100">Stock global</h2>
             <p className="mt-0.5 text-xs text-slate-500">
@@ -96,19 +97,26 @@ export default function StockGlobalTable({ rows = [], isLoading }) {
                 : `${rows.length} producto${rows.length !== 1 ? "s" : ""} en el sistema`}
             </p>
           </div>
-          {hasActiveFilter && (
-            <button
-              onClick={() => {
-                setSearch("");
-                setMarca("todas");
-                setCategoria("todas");
-                setCriticalOnly(false);
-              }}
-              className="rounded-lg border border-slate-700 px-2.5 py-1 text-xs font-medium text-slate-400 transition hover:border-slate-500 hover:text-slate-200"
-            >
-              Limpiar filtros
-            </button>
-          )}
+          <div className="flex items-center gap-2">
+            <ExportButton
+              data={filtered}
+              dataType="stock"
+              fileName="stock_global"
+            />
+            {hasActiveFilter && (
+              <button
+                onClick={() => {
+                  setSearch("");
+                  setMarca("todas");
+                  setCategoria("todas");
+                  setCriticalOnly(false);
+                }}
+                className="rounded-lg border border-slate-700 px-2.5 py-1 text-xs font-medium text-slate-400 transition hover:border-slate-500 hover:text-slate-200"
+              >
+                Limpiar filtros
+              </button>
+            )}
+          </div>
         </div>
 
         <div className="grid gap-2 md:grid-cols-4">

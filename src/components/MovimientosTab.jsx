@@ -4,6 +4,8 @@ const TIPO_STYLES = {
   ajuste_manual: "bg-violet-500/15 text-violet-400 border-violet-500/20",
 };
 
+import ExportButton from "./ExportButton";
+
 const TIPO_LABELS = {
   despacho: "Despacho",
   recepcion: "Recepción",
@@ -42,13 +44,22 @@ export default function MovimientosTab({ movimientos, isLoading }) {
   return (
     <div className="overflow-hidden rounded-2xl border border-slate-800 bg-slate-900 shadow-sm">
       <div className="border-b border-slate-800 px-5 py-4">
-        <h2 className="font-semibold text-slate-100">
-          Historial de movimientos
-        </h2>
-        <p className="mt-0.5 text-xs text-slate-500">
-          Registro de despachos, recepciones y ajustes manuales. Últimos{" "}
-          {rows.length} movimientos.
-        </p>
+        <div className="flex items-center justify-between gap-3">
+          <div>
+            <h2 className="font-semibold text-slate-100">
+              Historial de movimientos
+            </h2>
+            <p className="mt-0.5 text-xs text-slate-500">
+              Registro de despachos, recepciones y ajustes manuales. Últimos{" "}
+              {rows.length} movimientos.
+            </p>
+          </div>
+          <ExportButton
+            data={rows}
+            dataType="movimientos"
+            fileName="historial_movimientos"
+          />
+        </div>
       </div>
 
       {rows.length === 0 ? (

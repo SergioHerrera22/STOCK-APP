@@ -8,6 +8,8 @@ import AuthPanel from "./components/AuthPanel";
 import StockAdjustTab from "./components/StockAdjustTab";
 import MovimientosTab from "./components/MovimientosTab";
 import ProductsCrudTab from "./components/ProductsCrudTab";
+import StockAlertBanner from "./components/StockAlertBanner";
+import ExportButton from "./components/ExportButton";
 import { mapSupabaseError } from "./lib/errorMapper";
 import { supabase } from "./lib/supabaseClient";
 
@@ -440,6 +442,18 @@ export default function App() {
 
   const createProductMutation = useMutation({
     mutationFn: async (payload) => {
+      // Validate duplicate codigo_barras
+      if (payload.codigo_barras && payload.codigo_barras.trim()) {
+        const existingProduct = (productosQuery.data ?? []).find(
+          (p) => p.codigo_barras === payload.codigo_barras.trim(),
+        );
+        if (existingProduct) {
+          throw new Error(
+            `El código de barras "${payload.codigo_barras}" ya existe en el producto "${existingProduct.nombre}".`,
+          );
+        }
+      }
+
       const { error } = await supabase.from("productos").insert(payload);
       if (error) throw error;
     },
@@ -706,6 +720,8 @@ export default function App() {
             }
           />
         </div>
+
+        <StockAlertBanner stock={stockQuery.data} threshold={10} />
 
         {!session && (
           <AuthPanel
