@@ -4,6 +4,14 @@ import { supabase } from "../lib/supabaseClient";
 
 const REQUIRED_HEADERS = ["nombre", "marca", "categoria", "tamaño"];
 
+const HEADER_ALIASES = {
+  nombre: ["nombre", "nombre del producto", "descripcion", "descripcion"],
+  marca: ["marca"],
+  categoria: ["categoria", "categoria", "rubro", "linea"],
+  tamaño: ["tamano", "tamano", "presentacion", "presentacion", "tam"],
+  codigo_barras: ["codigo_barras", "codigo de barras", "codigo", "cod"],
+};
+
 const COLUMN_GUIDE = [
   { col: "nombre", desc: "Nombre del producto", req: true },
   { col: "marca", desc: "Marca", req: true },
@@ -27,6 +35,165 @@ const PREVIEW_LABELS = {
   codigo_barras: "Cód. de barras",
 };
 
+function normalizeText(value) {
+  return String(value ?? "")
+    .trim()
+    .toLowerCase()
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .replace(/\s+/g, " ");
+}
+
+function mapKnownHeaders(row) {
+  const mapped = {};
+
+  for (const [rawKey, rawValue] of Object.entries(row ?? {})) {
+    const key = normalizeText(rawKey);
+    const value = String(rawValue ?? "").trim();
+
+    for (const [canonical, aliases] of Object.entries(HEADER_ALIASES)) {
+      if (!aliases.includes(key)) continue;
+      if (!mapped[canonical]) mapped[canonical] = value;
+      break;
+    }
+  }
+
+  return mapped;
+}
+
+function inferCategoria(nombre) {
+  const text = normalizeText(nombre).toUpperCase();
+  if (text.includes("BARNIZ")) return "Barniz";
+  if (text.includes("LATEX") || text.includes("LÁTEX")) return "Látex";
+  if (text.includes("CONVERTIDOR")) return "Convertidor";
+  if (text.includes("PRIMER")) return "Primer";
+  if (text.includes("FONDO")) return "Fondo";
+  if (text.includes("ESMALTE") || text.includes("E/S")) return "Esmalte";
+  if (text.includes("MEM LIQUIDA") || text.includes("IMPERME")) {
+    return "Impermeabilizante";
+  }
+  return "General";
+}
+
+function inferMarca(nombre) {
+  const clean = String(nombre ?? "").trim();
+  if (!clean) return "Sin marca";
+  return clean.split(/\s+/)[0];
+}
+
+function inferTamaño(descripcion) {
+  const source = String(descripcion ?? "");
+  const regex =
+    /(\d+\/\d+\s*L|\d+[.,]?\d*\s*(?:L|ML))(?:\s*\+\s*(\d+\/\d+\s*L|\d+[.,]?\d*\s*(?:L|ML)))?/gi;
+
+  let match;
+  let last = null;
+  while ((match = regex.exec(source)) !== null) {
+    last = match[0];
+  }
+
+  return last ? last.replace(/\s+/g, "") : "";
+}
+
+function normalizeDescription(desc) {
+  return String(desc ?? "")
+    .replace(/\.{2,}/g, " ")
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
+function parseStructuredReportRows(rows2d) {
+  let headerRow = -1;
+  let codigoCol = -1;
+  let descripcionCol = -1;
+
+  for (let i = 0; i < rows2d.length; i += 1) {
+    const row = rows2d[i] ?? [];
+    for (let col = 0; col < row.length; col += 1) {
+      const cell = normalizeText(row[col]);
+      if (cell === "codigo") codigoCol = col;
+      if (cell === "descripcion") descripcionCol = col;
+    }
+    if (codigoCol >= 0 && descripcionCol >= 0) {
+      headerRow = i;
+      break;
+    }
+  }
+
+  if (headerRow < 0 || codigoCol < 0 || descripcionCol < 0) return [];
+
+  const readNeighborCell = (row, col) => {
+    const center = String(row[col] ?? "").trim();
+    if (center) return center;
+
+    const left = String(row[col - 1] ?? "").trim();
+    if (left) return left;
+
+    return String(row[col + 1] ?? "").trim();
+  };
+
+  const parsed = [];
+  for (let i = headerRow + 1; i < rows2d.length; i += 1) {
+    const row = rows2d[i] ?? [];
+    const codigo = readNeighborCell(row, codigoCol);
+    const descripcionRaw = readNeighborCell(row, descripcionCol);
+    if (!codigo || !descripcionRaw) continue;
+
+    const nombre = normalizeDescription(descripcionRaw);
+    parsed.push({
+      nombre,
+      marca: inferMarca(nombre),
+      categoria: inferCategoria(nombre),
+      tamaño: inferTamaño(nombre) || "Sin tamaño",
+      codigo_barras: codigo,
+    });
+  }
+
+  return parsed;
+}
+
+async function parseInputFile(file) {
+  const ext = file.name.split(".").pop()?.toLowerCase();
+
+  if (ext === "csv") {
+    return await new Promise((resolve, reject) => {
+      Papa.parse(file, {
+        header: true,
+        skipEmptyLines: true,
+        complete: ({ data }) => {
+          const mapped = (data ?? [])
+            .map((row) => mapKnownHeaders(row))
+            .filter((row) => Object.keys(row).length > 0);
+          resolve(mapped);
+        },
+        error: reject,
+      });
+    });
+  }
+
+  if (ext === "xlsx" || ext === "xls") {
+    const XLSX = await import("xlsx");
+    const buffer = await file.arrayBuffer();
+    const workbook = XLSX.read(buffer, { type: "array" });
+    const firstSheet = workbook.Sheets[workbook.SheetNames[0]];
+
+    const jsonRows = XLSX.utils.sheet_to_json(firstSheet, { defval: "" });
+    const mappedJson = jsonRows
+      .map((row) => mapKnownHeaders(row))
+      .filter((row) => Object.keys(row).length > 0);
+
+    if (mappedJson.length > 0) return mappedJson;
+
+    const rows2d = XLSX.utils.sheet_to_json(firstSheet, {
+      header: 1,
+      defval: "",
+    });
+    return parseStructuredReportRows(rows2d);
+  }
+
+  throw new Error("Formato no soportado. Usá .csv, .xlsx o .xls");
+}
+
 export default function CsvImport({ onImported }) {
   const [loading, setLoading] = useState(false);
   const [result, setResult] = useState(null);
@@ -42,26 +209,44 @@ export default function CsvImport({ onImported }) {
     setPreview(null);
     setProgress(0);
 
-    Papa.parse(file, {
-      header: true,
-      skipEmptyLines: true,
-      complete: ({ data, meta }) => {
-        const missing = REQUIRED_HEADERS.filter(
-          (header) => !meta.fields?.includes(header),
+    parseInputFile(file)
+      .then((rows) => {
+        const cleanedRows = rows.filter((row) =>
+          Object.values(row).some((v) => String(v ?? "").trim().length > 0),
         );
-        if (missing.length) {
+
+        if (!cleanedRows.length) {
           setResult({
             type: "error",
-            message: `Faltan columnas: ${missing.join(", ")}`,
+            message:
+              "No se detectaron filas importables. Revisá el formato del archivo.",
           });
           return;
         }
-        setPreview({ rows: data, totalRows: data.length });
-      },
-      error: (error) => {
-        setResult({ type: "error", message: error.message });
-      },
-    });
+
+        const missing = REQUIRED_HEADERS.filter(
+          (header) =>
+            !cleanedRows.some((row) => String(row[header] ?? "").trim()),
+        );
+
+        if (missing.length) {
+          setResult({
+            type: "error",
+            message: `No se pudieron obtener estas columnas requeridas: ${missing.join(
+              ", ",
+            )}`,
+          });
+          return;
+        }
+
+        setPreview({ rows: cleanedRows, totalRows: cleanedRows.length });
+      })
+      .catch((error) => {
+        setResult({
+          type: "error",
+          message: error?.message || "No se pudo leer el archivo.",
+        });
+      });
   };
 
   const handleCancelPreview = () => {
@@ -85,9 +270,9 @@ export default function CsvImport({ onImported }) {
       try {
         const productPayload = {
           nombre: row.nombre?.trim(),
-          marca: row.marca?.trim(),
-          categoria: row.categoria?.trim(),
-          tamaño: row.tamaño?.trim(),
+          marca: row.marca?.trim() || inferMarca(row.nombre),
+          categoria: row.categoria?.trim() || inferCategoria(row.nombre),
+          tamaño: row.tamaño?.trim() || inferTamaño(row.nombre) || "Sin tamaño",
           codigo_barras: row.codigo_barras?.trim() || null,
         };
 
@@ -129,8 +314,7 @@ export default function CsvImport({ onImported }) {
           Importación masiva de productos
         </h2>
         <p className="mt-0.5 text-xs text-slate-500">
-          Cargá un CSV para insertar productos y su stock inicial en todas las
-          ubicaciones.
+          Cargá un archivo CSV o Excel para insertar productos en lote.
         </p>
       </div>
 
@@ -214,13 +398,13 @@ export default function CsvImport({ onImported }) {
                   {fileName ? fileName : "Hacer clic para seleccionar archivo"}
                 </p>
                 <p className="mt-0.5 text-xs text-slate-600">
-                  Solo archivos .csv
+                  Archivos .csv, .xlsx o .xls
                 </p>
               </div>
               <input
                 id="csv-input"
                 type="file"
-                accept=".csv"
+                accept=".csv,.xlsx,.xls"
                 onChange={handleFile}
                 className="sr-only"
               />
@@ -268,7 +452,7 @@ export default function CsvImport({ onImported }) {
           {/* Right: column guide */}
           <div>
             <p className="mb-2 text-xs font-semibold uppercase tracking-wider text-slate-500">
-              Columnas requeridas del CSV
+              Columnas requeridas del archivo
             </p>
             <div className="overflow-hidden rounded-lg border border-slate-800">
               <table className="min-w-full text-xs">
