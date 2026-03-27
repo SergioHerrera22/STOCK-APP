@@ -2,17 +2,7 @@ import { useState } from "react";
 import Papa from "papaparse";
 import { supabase } from "../lib/supabaseClient";
 
-const REQUIRED_HEADERS = [
-  "nombre",
-  "marca",
-  "categoria",
-  "tamaño",
-  "codigo_barras",
-  "stock_sucursal_1",
-  "stock_sucursal_2",
-  "stock_sucursal_3",
-  "stock_deposito",
-];
+const REQUIRED_HEADERS = ["nombre", "marca", "categoria", "tamaño"];
 
 const COLUMN_GUIDE = [
   { col: "nombre", desc: "Nombre del producto", req: true },
@@ -20,10 +10,6 @@ const COLUMN_GUIDE = [
   { col: "categoria", desc: "Categoría", req: true },
   { col: "tamaño", desc: "Tamaño / presentación", req: true },
   { col: "codigo_barras", desc: "Código de barras", req: false },
-  { col: "stock_sucursal_1", desc: "Stock inicial CAPITAL", req: true },
-  { col: "stock_sucursal_2", desc: "Stock inicial RAWSON", req: true },
-  { col: "stock_sucursal_3", desc: "Stock inicial FALUCHO", req: true },
-  { col: "stock_deposito", desc: "Stock inicial depósito", req: true },
 ];
 
 const PREVIEW_COLS = [
@@ -31,25 +17,14 @@ const PREVIEW_COLS = [
   "marca",
   "categoria",
   "tamaño",
-  "stock_sucursal_1",
-  "stock_sucursal_2",
-  "stock_sucursal_3",
-  "stock_deposito",
+  "codigo_barras",
 ];
 const PREVIEW_LABELS = {
   nombre: "Nombre",
   marca: "Marca",
   categoria: "Categoría",
   tamaño: "Tamaño",
-  stock_sucursal_1: "CAPITAL",
-  stock_sucursal_2: "RAWSON",
-  stock_sucursal_3: "FALUCHO",
-  stock_deposito: "Depósito",
-};
-
-const toNumber = (value) => {
-  const parsed = Number(value);
-  return Number.isNaN(parsed) ? 0 : parsed;
+  codigo_barras: "Cód. de barras",
 };
 
 export default function CsvImport({ onImported }) {
@@ -128,34 +103,6 @@ export default function CsvImport({ onImported }) {
           .single();
 
         if (productError) throw productError;
-
-        const stockPayload = [
-          {
-            producto_id: producto.id,
-            ubicacion: "sucursal_1",
-            cantidad: toNumber(row.stock_sucursal_1),
-          },
-          {
-            producto_id: producto.id,
-            ubicacion: "sucursal_2",
-            cantidad: toNumber(row.stock_sucursal_2),
-          },
-          {
-            producto_id: producto.id,
-            ubicacion: "sucursal_3",
-            cantidad: toNumber(row.stock_sucursal_3),
-          },
-          {
-            producto_id: producto.id,
-            ubicacion: "deposito_central",
-            cantidad: toNumber(row.stock_deposito),
-          },
-        ];
-
-        const { error: stockError } = await supabase
-          .from("stock")
-          .insert(stockPayload);
-        if (stockError) throw stockError;
 
         imported += 1;
       } catch (error) {

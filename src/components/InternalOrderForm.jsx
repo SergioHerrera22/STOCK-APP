@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useMemo, useState } from "react";
 
 const DESTINOS = [
   { value: "sucursal_1", label: "CAPITAL" },
@@ -8,12 +8,32 @@ const DESTINOS = [
 
 export default function InternalOrderForm({
   productos = [],
+  pendingOrders = [],
   onSubmit,
+  onCancelOrder,
   isSubmitting,
+  cancelingOrderId,
 }) {
   const [productoId, setProductoId] = useState("");
   const [destino, setDestino] = useState("sucursal_1");
   const [cantidad, setCantidad] = useState(1);
+  const [search, setSearch] = useState("");
+
+  const filteredProductos = useMemo(() => {
+    const term = search.trim().toLowerCase();
+    if (!term) return productos;
+
+    return productos.filter((p) =>
+      [p.codigo_barras, p.nombre, p.marca, p.categoria, p.tamaño]
+        .filter(Boolean)
+        .some((value) => String(value).toLowerCase().includes(term)),
+    );
+  }, [productos, search]);
+
+  const selectedProducto = useMemo(() => {
+    if (!productoId) return null;
+    return productos.find((p) => Number(p.id) === Number(productoId)) ?? null;
+  }, [productos, productoId]);
 
   const handleSubmit = (event) => {
     event.preventDefault();
@@ -32,8 +52,10 @@ export default function InternalOrderForm({
 
   const currentDestino = DESTINOS.find((d) => d.value === destino);
 
+  const pending = pendingOrders.filter((p) => p.estado === "pendiente");
+
   return (
-    <div className="overflow-hidden rounded-xl border border-slate-800 bg-slate-900 shadow-sm">
+    <div className="overflow-hidden rounded-2xl border border-slate-800 bg-slate-900 shadow-sm">
       {/* Header */}
       <div className="border-b border-slate-800 px-5 py-4">
         <h2 className="font-semibold text-slate-100">Nuevo pedido interno</h2>
@@ -82,19 +104,46 @@ export default function InternalOrderForm({
             <label className="block text-xs font-semibold uppercase tracking-wider text-slate-500">
               Producto
             </label>
+            <input
+              type="text"
+              placeholder="Buscar por código, nombre, marca, categoría o tamaño..."
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              className="mb-2 w-full rounded-lg border border-slate-700 bg-slate-950 px-3 py-2 text-sm text-slate-100 transition focus:border-sky-600 focus:outline-none"
+            />
             <select
               value={productoId}
               onChange={(e) => setProductoId(e.target.value)}
               className="w-full rounded-lg border border-slate-700 bg-slate-950 px-3 py-2.5 text-sm text-slate-100 transition focus:border-sky-600 focus:outline-none"
               required
             >
-              <option value="">Seleccionar producto...</option>
-              {productos.map((p) => (
+              <option value="">
+                {filteredProductos.length
+                  ? "Buscá por nombre y elegí un resultado..."
+                  : "Sin resultados"}
+              </option>
+              {filteredProductos.map((p) => (
                 <option key={p.id} value={p.id}>
-                  {p.nombre}
+                  {[p.codigo_barras, p.nombre, p.marca, p.categoria, p.tamaño]
+                    .filter(Boolean)
+                    .join(" | ")}
                 </option>
               ))}
             </select>
+
+            {selectedProducto && (
+              <div className="mt-2 flex flex-wrap gap-2">
+                <span className="inline-flex items-center rounded-full border border-slate-700 bg-slate-950 px-2.5 py-1 text-xs font-medium text-slate-300">
+                  Codigo: {selectedProducto.codigo_barras || "Sin codigo"}
+                </span>
+                <span className="inline-flex items-center rounded-full border border-violet-500/30 bg-violet-500/10 px-2.5 py-1 text-xs font-medium text-violet-300">
+                  Categoria: {selectedProducto.categoria || "-"}
+                </span>
+                <span className="inline-flex items-center rounded-full border border-sky-500/30 bg-sky-500/10 px-2.5 py-1 text-xs font-medium text-sky-300">
+                  Tamano: {selectedProducto.tamaño || "-"}
+                </span>
+              </div>
+            )}
           </div>
 
           <div className="space-y-1.5">
@@ -132,10 +181,82 @@ export default function InternalOrderForm({
         <button
           type="submit"
           disabled={isSubmitting || !productoId}
-          className="w-full rounded-lg bg-sky-600 px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-sky-500 disabled:cursor-not-allowed disabled:opacity-50"
+          className="flex items-center justify-center gap-2 w-full rounded-xl bg-gradient-to-r from-sky-600 to-indigo-600 px-4 py-3 text-sm font-semibold text-white shadow-lg shadow-sky-500/20 transition hover:from-sky-500 hover:to-indigo-500 disabled:cursor-not-allowed disabled:opacity-50"
         >
-          {isSubmitting ? "Enviando pedido..." : "Solicitar al depósito"}
+          {isSubmitting ? (
+            <>
+              <span className="h-4 w-4 animate-spin rounded-full border-2 border-white/30 border-t-white" />
+              Enviando...
+            </>
+          ) : (
+            "Solicitar al depósito"
+          )}
         </button>
+
+        <div className="overflow-hidden rounded-xl border border-slate-800 bg-slate-950/40">
+          <div className="border-b border-slate-800 px-4 py-3">
+            <h3 className="text-sm font-semibold text-slate-200">
+              Pedidos pendientes
+            </h3>
+            <p className="mt-0.5 text-xs text-slate-500">
+              Podés cancelar solo pedidos pendientes indicando un motivo.
+            </p>
+          </div>
+
+          <div className="divide-y divide-slate-800">
+            {pending.length === 0 ? (
+              <p className="px-4 py-6 text-sm text-slate-500">
+                No hay pedidos pendientes para cancelar.
+              </p>
+            ) : (
+              pending.map((pedido) => {
+                const isCanceling = cancelingOrderId === pedido.id;
+                return (
+                  <div
+                    key={pedido.id}
+                    className="flex flex-col gap-3 px-4 py-3 md:flex-row md:items-center"
+                  >
+                    <div className="min-w-0 flex-1">
+                      <p className="truncate text-sm font-semibold text-slate-100">
+                        {pedido.productos?.nombre ?? "Producto desconocido"}
+                      </p>
+                      <p className="mt-0.5 text-xs text-slate-500">
+                        ID #{pedido.id} · Destino:{" "}
+                        {DESTINOS.find((d) => d.value === pedido.destino)
+                          ?.label ?? pedido.destino}{" "}
+                        · Cantidad: {pedido.cantidad}
+                      </p>
+                    </div>
+                    <button
+                      type="button"
+                      disabled={isCanceling}
+                      onClick={() => {
+                        const motivo = window.prompt(
+                          "Indica el motivo de cancelación (mínimo 3 caracteres):",
+                        );
+                        if (motivo === null) return;
+                        const clean = motivo.trim();
+                        if (clean.length < 3) {
+                          window.alert(
+                            "Debes indicar un motivo de al menos 3 caracteres.",
+                          );
+                          return;
+                        }
+                        onCancelOrder?.(pedido, clean);
+                      }}
+                      className="inline-flex items-center justify-center gap-2 rounded-lg border border-rose-700/60 bg-rose-500/10 px-3 py-2 text-xs font-semibold text-rose-300 transition hover:bg-rose-500/20 disabled:cursor-not-allowed disabled:opacity-60"
+                    >
+                      {isCanceling ? (
+                        <span className="h-4 w-4 animate-spin rounded-full border-2 border-rose-200/40 border-t-rose-200" />
+                      ) : null}
+                      Cancelar pedido
+                    </button>
+                  </div>
+                );
+              })
+            )}
+          </div>
+        </div>
       </form>
     </div>
   );

@@ -40,7 +40,7 @@ export default function MovimientosTab({ movimientos, isLoading }) {
   const rows = movimientos ?? [];
 
   return (
-    <div className="overflow-hidden rounded-xl border border-slate-800 bg-slate-900 shadow-sm">
+    <div className="overflow-hidden rounded-2xl border border-slate-800 bg-slate-900 shadow-sm">
       <div className="border-b border-slate-800 px-5 py-4">
         <h2 className="font-semibold text-slate-100">
           Historial de movimientos

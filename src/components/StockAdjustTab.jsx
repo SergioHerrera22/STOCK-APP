@@ -34,7 +34,7 @@ export default function StockAdjustTab({ productos, onAdjust, isSubmitting }) {
   };
 
   return (
-    <div className="overflow-hidden rounded-xl border border-slate-800 bg-slate-900 shadow-sm">
+    <div className="overflow-hidden rounded-2xl border border-slate-800 bg-slate-900 shadow-sm">
       <div className="border-b border-slate-800 px-5 py-4">
         <h2 className="font-semibold text-slate-100">Ajuste manual de stock</h2>
         <p className="mt-0.5 text-xs text-slate-500">
@@ -122,9 +122,16 @@ export default function StockAdjustTab({ productos, onAdjust, isSubmitting }) {
           <button
             type="submit"
             disabled={!canSubmit}
-            className="rounded-lg bg-sky-600 px-5 py-2 text-sm font-semibold text-white transition hover:bg-sky-500 disabled:cursor-not-allowed disabled:opacity-40"
+            className="flex items-center gap-2 rounded-xl bg-gradient-to-r from-sky-600 to-indigo-600 px-5 py-2.5 text-sm font-semibold text-white shadow-lg shadow-sky-500/20 transition hover:from-sky-500 hover:to-indigo-500 disabled:cursor-not-allowed disabled:opacity-40"
           >
-            {isSubmitting ? "Ajustando..." : "Aplicar ajuste"}
+            {isSubmitting ? (
+              <>
+                <span className="h-4 w-4 animate-spin rounded-full border-2 border-white/30 border-t-white" />
+                Ajustando...
+              </>
+            ) : (
+              "Aplicar ajuste"
+            )}
           </button>
 
           {motivo.trim().length > 0 && motivo.trim().length < 3 && (

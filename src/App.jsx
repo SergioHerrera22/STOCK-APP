@@ -7,30 +7,126 @@ import DispatchPanel from "./components/DispatchPanel";
 import AuthPanel from "./components/AuthPanel";
 import StockAdjustTab from "./components/StockAdjustTab";
 import MovimientosTab from "./components/MovimientosTab";
+import ProductsCrudTab from "./components/ProductsCrudTab";
 import { mapSupabaseError } from "./lib/errorMapper";
 import { supabase } from "./lib/supabaseClient";
 
 const TABS = [
-  { id: "stock", label: "Stock global", icon: "▤" },
-  { id: "pedidos", label: "Nuevo pedido", icon: "↑", requiresAuth: true },
-  { id: "despacho", label: "Despacho", icon: "→", requiresAuth: true },
-  { id: "ajustar", label: "Ajustar stock", icon: "✎", requiresAuth: true },
-  { id: "historial", label: "Historial", icon: "≡", requiresAuth: true },
-  { id: "importar", label: "Importar CSV", icon: "⊕", requiresAuth: true },
+  { id: "stock", label: "Stock", icon: "stock" },
+  {
+    id: "productos",
+    label: "Productos",
+    icon: "productos",
+    requiresAuth: true,
+  },
+  { id: "pedidos", label: "Pedido", icon: "pedido", requiresAuth: true },
+  { id: "despacho", label: "Despacho", icon: "despacho", requiresAuth: true },
+  { id: "ajustar", label: "Ajustar", icon: "ajustar", requiresAuth: true },
+  {
+    id: "historial",
+    label: "Historial",
+    icon: "historial",
+    requiresAuth: true,
+  },
+  { id: "importar", label: "Importar", icon: "importar", requiresAuth: true },
 ];
 
-function StatCard({ label, value, accent }) {
+const TAB_ICONS = {
+  stock: (
+    <svg viewBox="0 0 20 20" fill="currentColor" className="h-4 w-4">
+      <path d="M2 4a1 1 0 011-1h2a1 1 0 011 1v12a1 1 0 01-1 1H3a1 1 0 01-1-1V4zM8 4a1 1 0 011-1h2a1 1 0 011 1v12a1 1 0 01-1 1H9a1 1 0 01-1-1V4zM15 3a1 1 0 00-1 1v12a1 1 0 001 1h2a1 1 0 001-1V4a1 1 0 00-1-1h-2z" />
+    </svg>
+  ),
+  productos: (
+    <svg viewBox="0 0 20 20" fill="currentColor" className="h-4 w-4">
+      <path d="M3 5a2 2 0 012-2h10a2 2 0 012 2v2H3V5z" />
+      <path d="M3 9h14v6a2 2 0 01-2 2H5a2 2 0 01-2-2V9z" />
+      <path d="M8 12a1 1 0 100 2h4a1 1 0 100-2H8z" />
+    </svg>
+  ),
+  pedido: (
+    <svg viewBox="0 0 20 20" fill="currentColor" className="h-4 w-4">
+      <path
+        fillRule="evenodd"
+        d="M10 3a1 1 0 011 1v5h5a1 1 0 110 2h-5v5a1 1 0 11-2 0v-5H4a1 1 0 110-2h5V4a1 1 0 011-1z"
+        clipRule="evenodd"
+      />
+    </svg>
+  ),
+  despacho: (
+    <svg viewBox="0 0 20 20" fill="currentColor" className="h-4 w-4">
+      <path d="M8 16.5a1.5 1.5 0 11-3 0 1.5 1.5 0 013 0zM15 16.5a1.5 1.5 0 11-3 0 1.5 1.5 0 013 0z" />
+      <path d="M3 4a1 1 0 00-1 1v10a1 1 0 001 1h1.05a2.5 2.5 0 014.9 0H11a1 1 0 001-1v-5h2.038A2 2 0 0116 11.446V15h-.05a2.5 2.5 0 01-4.9 0H9a2 2 0 01-2-2V5a1 1 0 00-1-1H3z" />
+    </svg>
+  ),
+  ajustar: (
+    <svg viewBox="0 0 20 20" fill="currentColor" className="h-4 w-4">
+      <path d="M17.414 2.586a2 2 0 00-2.828 0L7 10.172V13h2.828l7.586-7.586a2 2 0 000-2.828z" />
+      <path
+        fillRule="evenodd"
+        d="M2 6a2 2 0 012-2h4a1 1 0 010 2H4v10h10v-4a1 1 0 112 0v4a2 2 0 01-2 2H4a2 2 0 01-2-2V6z"
+        clipRule="evenodd"
+      />
+    </svg>
+  ),
+  historial: (
+    <svg viewBox="0 0 20 20" fill="currentColor" className="h-4 w-4">
+      <path
+        fillRule="evenodd"
+        d="M10 18a8 8 0 100-16 8 8 0 000 16zm1-12a1 1 0 10-2 0v4a1 1 0 00.293.707l2.828 2.829a1 1 0 101.415-1.415L11 9.586V6z"
+        clipRule="evenodd"
+      />
+    </svg>
+  ),
+  importar: (
+    <svg viewBox="0 0 20 20" fill="currentColor" className="h-4 w-4">
+      <path
+        fillRule="evenodd"
+        d="M3 17a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1zM6.293 6.707a1 1 0 010-1.414l3-3a1 1 0 011.414 0l3 3a1 1 0 01-1.414 1.414L11 5.414V13a1 1 0 11-2 0V5.414L7.707 6.707a1 1 0 01-1.414 0z"
+        clipRule="evenodd"
+      />
+    </svg>
+  ),
+};
+
+function StatCard({ label, value, accent, icon }) {
   const styles = {
-    sky: "border-sky-500/20    bg-sky-500/5    text-sky-400",
-    amber: "border-amber-500/20  bg-amber-500/5  text-amber-400",
-    violet: "border-violet-500/20 bg-violet-500/5 text-violet-400",
-    emerald: "border-emerald-500/20 bg-emerald-500/5 text-emerald-400",
+    sky: {
+      wrap: "border-sky-500/20 from-sky-500/[0.12] to-sky-500/[0.03]",
+      text: "text-sky-300",
+      bg: "bg-sky-500/10",
+    },
+    amber: {
+      wrap: "border-amber-500/20 from-amber-500/[0.12] to-amber-500/[0.03]",
+      text: "text-amber-300",
+      bg: "bg-amber-500/10",
+    },
+    violet: {
+      wrap: "border-violet-500/20 from-violet-500/[0.12] to-violet-500/[0.03]",
+      text: "text-violet-300",
+      bg: "bg-violet-500/10",
+    },
+    emerald: {
+      wrap: "border-emerald-500/20 from-emerald-500/[0.12] to-emerald-500/[0.03]",
+      text: "text-emerald-300",
+      bg: "bg-emerald-500/10",
+    },
   };
+  const s = styles[accent];
   return (
-    <div className={`rounded-xl border p-4 ${styles[accent]}`}>
-      <p className="text-2xl font-bold leading-none">{value}</p>
-      <p className="mt-1.5 text-xs opacity-60 font-medium uppercase tracking-wider">
+    <div
+      className={`relative overflow-hidden rounded-2xl border bg-gradient-to-br p-5 ${s.wrap}`}
+    >
+      <div className={`absolute right-4 top-4 rounded-xl p-2 ${s.bg}`}>
+        <div className={s.text}>{icon}</div>
+      </div>
+      <p className="text-[11px] font-semibold uppercase tracking-widest text-slate-500">
         {label}
+      </p>
+      <p
+        className={`mt-1.5 text-4xl font-black leading-none tracking-tight ${s.text}`}
+      >
+        {value}
       </p>
     </div>
   );
@@ -41,14 +137,14 @@ function Toast({ toast }) {
   const isError = toast.type === "error";
   return (
     <div
-      className={`fixed bottom-5 right-5 z-50 flex items-center gap-3 rounded-xl px-4 py-3 shadow-2xl text-sm font-semibold border ${
+      className={`fixed bottom-6 right-6 z-50 flex items-center gap-3 rounded-2xl px-4 py-3 shadow-2xl text-sm font-semibold border backdrop-blur-md ${
         isError
-          ? "bg-rose-950 border-rose-700 text-rose-200"
-          : "bg-emerald-950 border-emerald-700 text-emerald-200"
+          ? "bg-rose-950/90 border-rose-700/60 text-rose-200"
+          : "bg-emerald-950/90 border-emerald-700/60 text-emerald-200"
       }`}
     >
       <span
-        className={`w-5 h-5 flex items-center justify-center rounded-full text-xs font-bold ${
+        className={`flex h-6 w-6 shrink-0 items-center justify-center rounded-full text-xs font-black ${
           isError ? "bg-rose-500" : "bg-emerald-500"
         }`}
       >
@@ -62,7 +158,7 @@ function Toast({ toast }) {
 async function fetchProductos() {
   const { data, error } = await supabase
     .from("productos")
-    .select("id,nombre")
+    .select("id,nombre,marca,categoria,tamaño,codigo_barras")
     .order("nombre");
   if (error) throw error;
   return data ?? [];
@@ -75,7 +171,7 @@ async function fetchStockGlobal() {
   ] = await Promise.all([
     supabase
       .from("productos")
-      .select("id,nombre,marca,categoria")
+      .select("id,nombre,marca,categoria,tamaño")
       .order("nombre"),
     supabase.from("stock").select("producto_id,ubicacion,cantidad"),
   ]);
@@ -91,6 +187,7 @@ async function fetchStockGlobal() {
         nombre: product.nombre,
         marca: product.marca,
         categoria: product.categoria,
+        tamaño: product.tamaño,
         sucursal_1: 0,
         sucursal_2: 0,
         sucursal_3: 0,
@@ -139,6 +236,9 @@ export default function App() {
   const [toast, setToast] = useState(null);
   const [dispatchingId, setDispatchingId] = useState(null);
   const [receivingId, setReceivingId] = useState(null);
+  const [cancelingOrderId, setCancelingOrderId] = useState(null);
+  const [updatingProductId, setUpdatingProductId] = useState(null);
+  const [deletingProductId, setDeletingProductId] = useState(null);
   const [session, setSession] = useState(null);
   const [authLoading, setAuthLoading] = useState(true);
   const [authSubmitting, setAuthSubmitting] = useState(false);
@@ -294,6 +394,114 @@ export default function App() {
       showToast(mapSupabaseError(error, "Error al generar pedido."), "error"),
   });
 
+  const cancelOrderMutation = useMutation({
+    mutationFn: async ({ pedido, motivo }) => {
+      setCancelingOrderId(pedido.id);
+
+      const { error: logError } = await supabase
+        .from("movimientos_stock")
+        .insert({
+          producto_id: pedido.producto_id,
+          transferencia_id: pedido.id,
+          origen: pedido.origen,
+          destino: pedido.destino,
+          cantidad: pedido.cantidad,
+          tipo: "ajuste_manual",
+          motivo: `Cancelacion de pedido: ${motivo}`,
+          actor_id: session?.user?.id ?? null,
+        });
+
+      if (logError) throw logError;
+
+      const { error: deleteError } = await supabase
+        .from("transferencias")
+        .delete()
+        .eq("id", pedido.id)
+        .eq("estado", "pendiente");
+
+      if (deleteError) throw deleteError;
+    },
+    onSuccess: async () => {
+      showToast("Pedido cancelado correctamente.");
+      await Promise.all([
+        queryClient.invalidateQueries({
+          queryKey: ["transferencias-pendientes"],
+        }),
+        queryClient.invalidateQueries({ queryKey: ["movimientos"] }),
+      ]);
+    },
+    onError: (error) =>
+      showToast(
+        mapSupabaseError(error, "No se pudo cancelar el pedido."),
+        "error",
+      ),
+    onSettled: () => setCancelingOrderId(null),
+  });
+
+  const createProductMutation = useMutation({
+    mutationFn: async (payload) => {
+      const { error } = await supabase.from("productos").insert(payload);
+      if (error) throw error;
+    },
+    onSuccess: async () => {
+      showToast("Producto creado correctamente.");
+      await Promise.all([
+        queryClient.invalidateQueries({ queryKey: ["productos"] }),
+        queryClient.invalidateQueries({ queryKey: ["stock-global"] }),
+      ]);
+    },
+    onError: (error) =>
+      showToast(mapSupabaseError(error, "Error al crear producto."), "error"),
+  });
+
+  const updateProductMutation = useMutation({
+    mutationFn: async ({ id, ...payload }) => {
+      setUpdatingProductId(id);
+      const { error } = await supabase
+        .from("productos")
+        .update(payload)
+        .eq("id", id);
+      if (error) throw error;
+    },
+    onSuccess: async () => {
+      showToast("Producto actualizado.");
+      await Promise.all([
+        queryClient.invalidateQueries({ queryKey: ["productos"] }),
+        queryClient.invalidateQueries({ queryKey: ["stock-global"] }),
+      ]);
+    },
+    onError: (error) =>
+      showToast(
+        mapSupabaseError(error, "Error al actualizar producto."),
+        "error",
+      ),
+    onSettled: () => setUpdatingProductId(null),
+  });
+
+  const deleteProductMutation = useMutation({
+    mutationFn: async (product) => {
+      setDeletingProductId(product.id);
+      const { error } = await supabase
+        .from("productos")
+        .delete()
+        .eq("id", product.id);
+      if (error) throw error;
+    },
+    onSuccess: async () => {
+      showToast("Producto eliminado.");
+      await Promise.all([
+        queryClient.invalidateQueries({ queryKey: ["productos"] }),
+        queryClient.invalidateQueries({ queryKey: ["stock-global"] }),
+      ]);
+    },
+    onError: (error) =>
+      showToast(
+        mapSupabaseError(error, "Error al eliminar producto."),
+        "error",
+      ),
+    onSettled: () => setDeletingProductId(null),
+  });
+
   const dispatchMutation = useMutation({
     mutationFn: async (pedido) => {
       setDispatchingId(pedido.id);
@@ -384,101 +592,181 @@ export default function App() {
 
   return (
     <div className="min-h-screen bg-slate-950 text-slate-100">
-      {/* ── Navbar ── */}
-      <header className="sticky top-0 z-20 border-b border-slate-800 bg-slate-950/90 backdrop-blur">
-        <div className="mx-auto flex max-w-6xl items-center justify-between px-4 py-3">
+      {/* ── Header ── */}
+      <header className="sticky top-0 z-20 border-b border-slate-800/60 bg-slate-950/95 backdrop-blur-md">
+        <div className="mx-auto flex max-w-6xl items-center gap-3 px-4 py-3">
           <div className="flex items-center gap-3">
-            <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-sky-600 text-sm font-black text-white">
-              P
+            <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-gradient-to-br from-sky-500 to-indigo-600 shadow-lg shadow-sky-500/20">
+              <svg
+                className="h-5 w-5 text-white"
+                viewBox="0 0 20 20"
+                fill="currentColor"
+              >
+                <path
+                  fillRule="evenodd"
+                  d="M4 2a2 2 0 00-2 2v11a3 3 0 106 0V4a2 2 0 00-2-2H4zm1 14a1 1 0 100-2 1 1 0 000 2zm5-1.757l4.9-4.9a2 2 0 000-2.828L13.485 5.1a2 2 0 00-2.828 0L10 5.757v8.486zM16 18H9.071l6-6H16a2 2 0 012 2v2a2 2 0 01-2 2z"
+                  clipRule="evenodd"
+                />
+              </svg>
             </div>
             <div className="leading-none">
-              <p className="font-bold text-slate-100">Pinturería</p>
-              <p className="text-[11px] text-slate-500">Gestión de stock</p>
+              <p className="text-sm font-bold text-slate-100">Pinturería</p>
+              <p className="mt-0.5 text-[11px] text-slate-500">
+                Control de stock
+              </p>
             </div>
           </div>
 
-          {session?.user?.email && (
-            <span className="rounded-lg border border-slate-700 bg-slate-900 px-2.5 py-1 text-xs text-slate-300">
-              {session.user.email}
-            </span>
-          )}
-
-          {pendingCount > 0 && (
-            <button
-              onClick={() => setActiveTab("despacho")}
-              className="flex items-center gap-2 rounded-lg border border-amber-500/25 bg-amber-500/10 px-3 py-1.5 text-xs font-semibold text-amber-400 transition hover:bg-amber-500/20"
-            >
-              <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-amber-400" />
-              {pendingCount} pedido{pendingCount !== 1 ? "s" : ""} pendiente
-              {pendingCount !== 1 ? "s" : ""}
-            </button>
-          )}
+          <div className="ml-auto flex items-center gap-2">
+            {pendingCount > 0 && (
+              <button
+                onClick={() => setActiveTab("despacho")}
+                className="flex items-center gap-2 rounded-full border border-amber-500/30 bg-amber-500/10 px-3 py-1.5 text-xs font-semibold text-amber-400 transition hover:bg-amber-500/20"
+              >
+                <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-amber-400" />
+                {pendingCount} pendiente{pendingCount !== 1 ? "s" : ""}
+              </button>
+            )}
+            {session && (
+              <div className="flex items-center gap-2 rounded-xl border border-slate-700/60 bg-slate-900 py-1 pl-2 pr-1">
+                <div className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-sky-500 to-indigo-600 text-[10px] font-black text-white">
+                  {session.user.email[0].toUpperCase()}
+                </div>
+                <span className="max-w-[150px] truncate text-xs text-slate-300">
+                  {session.user.email}
+                </span>
+                <button
+                  onClick={handleSignOut}
+                  disabled={authSubmitting}
+                  className="rounded-lg px-2 py-1 text-[11px] font-medium text-slate-500 transition hover:bg-slate-800 hover:text-slate-200 disabled:opacity-50"
+                >
+                  Salir
+                </button>
+              </div>
+            )}
+          </div>
         </div>
       </header>
 
-      <div className="mx-auto max-w-6xl px-4 py-6">
+      <div className="mx-auto max-w-6xl px-4 py-8">
         {/* ── Stats ── */}
-        <div className="mb-6 grid grid-cols-2 gap-3 md:grid-cols-4">
-          <StatCard label="Productos" value={totalProducts} accent="sky" />
+        <div className="mb-8 grid grid-cols-2 gap-4 md:grid-cols-4">
           <StatCard
-            label="Pedidos pendientes"
+            label="Productos"
+            value={totalProducts}
+            accent="sky"
+            icon={
+              <svg viewBox="0 0 20 20" fill="currentColor" className="h-5 w-5">
+                <path d="M4 3a2 2 0 100 4h12a2 2 0 100-4H4z" />
+                <path
+                  fillRule="evenodd"
+                  d="M3 8h14v7a2 2 0 01-2 2H5a2 2 0 01-2-2V8zm5 3a1 1 0 011-1h2a1 1 0 110 2H9a1 1 0 01-1-1z"
+                  clipRule="evenodd"
+                />
+              </svg>
+            }
+          />
+          <StatCard
+            label="Pendientes"
             value={pendingCount}
             accent="amber"
+            icon={
+              <svg viewBox="0 0 20 20" fill="currentColor" className="h-5 w-5">
+                <path
+                  fillRule="evenodd"
+                  d="M10 18a8 8 0 100-16 8 8 0 000 16zm1-12a1 1 0 10-2 0v4a1 1 0 00.293.707l2.828 2.829a1 1 0 101.415-1.415L11 9.586V6z"
+                  clipRule="evenodd"
+                />
+              </svg>
+            }
           />
           <StatCard
-            label="Productos criticos"
+            label="Stock crítico"
             value={criticalProducts}
             accent="violet"
+            icon={
+              <svg viewBox="0 0 20 20" fill="currentColor" className="h-5 w-5">
+                <path
+                  fillRule="evenodd"
+                  d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z"
+                  clipRule="evenodd"
+                />
+              </svg>
+            }
           />
           <StatCard
-            label="En transito"
+            label="En tránsito"
             value={inTransitCount}
             accent="emerald"
+            icon={
+              <svg viewBox="0 0 20 20" fill="currentColor" className="h-5 w-5">
+                <path d="M8 16.5a1.5 1.5 0 11-3 0 1.5 1.5 0 013 0zM15 16.5a1.5 1.5 0 11-3 0 1.5 1.5 0 013 0z" />
+                <path d="M3 4a1 1 0 00-1 1v10a1 1 0 001 1h1.05a2.5 2.5 0 014.9 0H11a1 1 0 001-1v-5h2.038A2 2 0 0116 11.446V15h-.05a2.5 2.5 0 01-4.9 0H9a2 2 0 01-2-2V5a1 1 0 00-1-1H3z" />
+              </svg>
+            }
           />
         </div>
 
-        <AuthPanel
-          session={session}
-          authLoading={authLoading}
-          authSubmitting={authSubmitting}
-          credentials={credentials}
-          onCredentialsChange={setCredentials}
-          onSignIn={handleSignIn}
-          onSignUp={handleSignUp}
-          onResetPassword={handleResetPassword}
-          onSignOut={handleSignOut}
-        />
+        {!session && (
+          <AuthPanel
+            session={session}
+            authLoading={authLoading}
+            authSubmitting={authSubmitting}
+            credentials={credentials}
+            onCredentialsChange={setCredentials}
+            onSignIn={handleSignIn}
+            onSignUp={handleSignUp}
+            onResetPassword={handleResetPassword}
+            onSignOut={handleSignOut}
+          />
+        )}
 
         {/* ── Tabs ── */}
-        <div className="mb-6 flex gap-1 rounded-xl border border-slate-800 bg-slate-900 p-1">
-          {TABS.map((tab) => {
-            const isLocked = Boolean(tab.requiresAuth && !session);
-            return (
-              <button
-                key={tab.id}
-                onClick={() => setActiveTab(tab.id)}
-                disabled={isLocked}
-                className={`relative flex flex-1 items-center justify-center gap-2 rounded-lg px-3 py-2 text-sm font-medium transition ${
-                  activeTab === tab.id
-                    ? "bg-sky-600 text-white shadow"
-                    : "text-slate-400 hover:bg-slate-800 hover:text-slate-100"
-                }`}
-              >
-                <span className="text-base leading-none">{tab.icon}</span>
-                <span className="hidden sm:inline">{tab.label}</span>
-                {isLocked && (
-                  <span className="rounded bg-slate-800 px-1.5 py-0.5 text-[10px] font-semibold text-slate-500">
-                    login
+        <div className="mb-6 overflow-x-auto pb-0.5">
+          <div className="flex min-w-max gap-0.5 rounded-xl border border-slate-800 bg-slate-900/60 p-1.5">
+            {TABS.map((tab) => {
+              const isLocked = Boolean(tab.requiresAuth && !session);
+              const isActive = activeTab === tab.id;
+              return (
+                <button
+                  key={tab.id}
+                  onClick={() => setActiveTab(tab.id)}
+                  disabled={isLocked}
+                  title={isLocked ? "Requiere sesión iniciada" : undefined}
+                  className={`relative flex items-center gap-2 rounded-lg px-4 py-2.5 text-sm font-medium transition-all duration-150 ${
+                    isActive
+                      ? "bg-slate-700 text-white shadow-md"
+                      : isLocked
+                        ? "cursor-not-allowed text-slate-700"
+                        : "text-slate-400 hover:bg-slate-800/70 hover:text-slate-200"
+                  }`}
+                >
+                  <span className={isLocked ? "opacity-40" : ""}>
+                    {TAB_ICONS[tab.icon]}
                   </span>
-                )}
-                {tab.id === "despacho" && pendingCount > 0 && (
-                  <span className="flex h-4 w-4 items-center justify-center rounded-full bg-amber-400 text-[10px] font-black text-slate-900">
-                    {pendingCount}
-                  </span>
-                )}
-              </button>
-            );
-          })}
+                  <span>{tab.label}</span>
+                  {isLocked && (
+                    <svg
+                      className="h-3 w-3 shrink-0 opacity-40"
+                      viewBox="0 0 16 16"
+                      fill="currentColor"
+                    >
+                      <path
+                        fillRule="evenodd"
+                        d="M8 1a3.5 3.5 0 00-3.5 3.5V6H3a1 1 0 00-1 1v7a1 1 0 001 1h10a1 1 0 001-1V7a1 1 0 00-1-1h-1.5V4.5A3.5 3.5 0 008 1zm2 5V4.5a2 2 0 10-4 0V6h4z"
+                        clipRule="evenodd"
+                      />
+                    </svg>
+                  )}
+                  {tab.id === "despacho" && pendingCount > 0 && (
+                    <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-amber-500 text-[10px] font-black text-slate-900">
+                      {pendingCount}
+                    </span>
+                  )}
+                </button>
+              );
+            })}
+          </div>
         </div>
 
         {/* ── Tab content ── */}
@@ -488,11 +776,46 @@ export default function App() {
             isLoading={stockQuery.isLoading}
           />
         )}
+        {activeTab === "productos" && (
+          <ProductsCrudTab
+            products={productosQuery.data}
+            isLoading={productosQuery.isLoading}
+            onCreate={(payload) => createProductMutation.mutate(payload)}
+            onUpdate={(payload) => updateProductMutation.mutate(payload)}
+            onDelete={(product) => {
+              if (!session) {
+                showToast("Inicia sesion para eliminar productos.", "error");
+                return;
+              }
+              if (
+                !window.confirm(
+                  `Confirmas eliminar el producto \"${product.nombre}\"?`,
+                )
+              )
+                return;
+              deleteProductMutation.mutate(product);
+            }}
+            isCreating={createProductMutation.isPending}
+            isUpdating={updateProductMutation.isPending}
+            isDeleting={deleteProductMutation.isPending}
+            updatingId={updatingProductId}
+            deletingId={deletingProductId}
+          />
+        )}
         {activeTab === "pedidos" && (
           <InternalOrderForm
             productos={productosQuery.data}
+            pendingOrders={transfersQuery.data}
             onSubmit={(payload) => createOrderMutation.mutate(payload)}
+            onCancelOrder={(pedido, motivo) => {
+              if (!session) {
+                showToast("Inicia sesion para cancelar pedidos.", "error");
+                return;
+              }
+              cancelOrderMutation.mutate({ pedido, motivo });
+            }}
             isSubmitting={createOrderMutation.isPending}
+            cancelingOrderId={cancelingOrderId}
           />
         )}
         {activeTab === "despacho" && (
@@ -540,6 +863,7 @@ export default function App() {
         {activeTab === "importar" && (
           <CsvImport
             onImported={() => {
+              queryClient.invalidateQueries({ queryKey: ["productos"] });
               queryClient.invalidateQueries({ queryKey: ["stock-global"] });
               setActiveTab("stock");
             }}
