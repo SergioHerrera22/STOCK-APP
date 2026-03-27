@@ -5,6 +5,8 @@ import StockGlobalTable from "./components/StockGlobalTable";
 import InternalOrderForm from "./components/InternalOrderForm";
 import DispatchPanel from "./components/DispatchPanel";
 import AuthPanel from "./components/AuthPanel";
+import StockAdjustTab from "./components/StockAdjustTab";
+import MovimientosTab from "./components/MovimientosTab";
 import { mapSupabaseError } from "./lib/errorMapper";
 import { supabase } from "./lib/supabaseClient";
 
@@ -12,6 +14,8 @@ const TABS = [
   { id: "stock", label: "Stock global", icon: "▤" },
   { id: "pedidos", label: "Nuevo pedido", icon: "↑", requiresAuth: true },
   { id: "despacho", label: "Despacho", icon: "→", requiresAuth: true },
+  { id: "ajustar", label: "Ajustar stock", icon: "✎", requiresAuth: true },
+  { id: "historial", label: "Historial", icon: "≡", requiresAuth: true },
   { id: "importar", label: "Importar CSV", icon: "⊕", requiresAuth: true },
 ];
 
@@ -104,6 +108,18 @@ async function fetchStockGlobal() {
   return Array.from(byProduct.values());
 }
 
+async function fetchMovimientos() {
+  const { data, error } = await supabase
+    .from("movimientos_stock")
+    .select(
+      "id,creado_at,tipo,origen,destino,cantidad,motivo,actor_id,productos(nombre)",
+    )
+    .order("creado_at", { ascending: false })
+    .limit(200);
+  if (error) throw error;
+  return data ?? [];
+}
+
 async function fetchPendingTransfers() {
   const { data, error } = await supabase
     .from("transferencias")
@@ -160,10 +176,7 @@ export default function App() {
   }, []);
 
   useEffect(() => {
-    const tabRequiereAuth =
-      activeTab === "pedidos" ||
-      activeTab === "despacho" ||
-      activeTab === "importar";
+    const tabRequiereAuth = TABS.find((t) => t.id === activeTab)?.requiresAuth;
     if (tabRequiereAuth && !session) {
       setActiveTab("stock");
     }
@@ -260,6 +273,11 @@ export default function App() {
     queryKey: ["transferencias-pendientes"],
     queryFn: fetchPendingTransfers,
   });
+  const movimientosQuery = useQuery({
+    queryKey: ["movimientos"],
+    queryFn: fetchMovimientos,
+    enabled: Boolean(session),
+  });
 
   const createOrderMutation = useMutation({
     mutationFn: async (payload) => {
@@ -308,6 +326,22 @@ export default function App() {
     onError: (error) =>
       showToast(mapSupabaseError(error, "Error al despachar."), "error"),
     onSettled: () => setDispatchingId(null),
+  });
+
+  const adjustMutation = useMutation({
+    mutationFn: async (params) => {
+      const { error } = await supabase.rpc("adjust_stock_manual", params);
+      if (error) throw error;
+    },
+    onSuccess: async () => {
+      showToast("Stock ajustado correctamente.");
+      await Promise.all([
+        queryClient.invalidateQueries({ queryKey: ["stock-global"] }),
+        queryClient.invalidateQueries({ queryKey: ["movimientos"] }),
+      ]);
+    },
+    onError: (error) =>
+      showToast(mapSupabaseError(error, "Error al ajustar stock."), "error"),
   });
 
   const receiveMutation = useMutation({
@@ -485,6 +519,22 @@ export default function App() {
                 return;
               receiveMutation.mutate(pedido);
             }}
+          />
+        )}
+        {activeTab === "ajustar" && (
+          <StockAdjustTab
+            productos={productosQuery.data}
+            onAdjust={(params) => {
+              if (!window.confirm("Confirmas el ajuste de stock?")) return;
+              adjustMutation.mutate(params);
+            }}
+            isSubmitting={adjustMutation.isPending}
+          />
+        )}
+        {activeTab === "historial" && (
+          <MovimientosTab
+            movimientos={movimientosQuery.data}
+            isLoading={movimientosQuery.isLoading}
           />
         )}
         {activeTab === "importar" && (
