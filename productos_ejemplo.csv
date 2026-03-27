@@ -1,0 +1,16 @@
+nombre,marca,categoria,tamaño,codigo_barras,stock_sucursal_1,stock_sucursal_2,stock_sucursal_3,stock_deposito
+Látex Interior Blanco,Sherwin Williams,Látex,4L,7790001000011,8,5,3,40
+Látex Interior Blanco,Sherwin Williams,Látex,20L,7790001000028,4,2,1,15
+Látex Exterior Marfil,Alba,Látex,4L,7790002000012,6,4,2,30
+Látex Exterior Marfil,Alba,Látex,20L,7790002000029,2,1,0,10
+Esmalte Sintético Negro Brillante,Colorín,Esmalte,1L,7790003000013,10,8,5,50
+Esmalte Sintético Blanco Satinado,Colorín,Esmalte,4L,7790003000020,5,3,4,25
+Barniz Marino Brillante,Cetol,Barniz,1L,7790004000014,7,6,3,35
+Barniz para Pisos,Sinteplast,Barniz,4L,7790005000015,3,2,1,20
+Membrana Líquida Gris,Iggam,Impermeabilizante,4L,7790006000016,4,3,2,18
+Sellador Fijador Universal,Tersuave,Sellador,4L,7790007000017,9,7,6,45
+Pintura de Piso Rojo Tráfico,Elbex,Piso,4L,7790008000018,5,4,3,22
+Pintura de Piso Gris,Elbex,Piso,20L,7790008000025,2,1,1,8
+Diluyente para Esmalte,Rex,Diluyente,1L,7790009000019,15,12,10,80
+Masilla Plástica en Pasta,Bostik,Masilla,1kg,7790010000010,6,5,4,30
+Removedor de Pintura,3M,Removedor,500ml,7790011000011,3,2,0,12
