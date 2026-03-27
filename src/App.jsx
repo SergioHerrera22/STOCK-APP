@@ -22,9 +22,9 @@ const TABS = [
     icon: "productos",
     requiresAuth: true,
   },
-  { id: "pedidos", label: "Pedido", icon: "pedido", requiresAuth: true },
+  { id: "pedidos", label: "Pedidos", icon: "pedido", requiresAuth: true },
   { id: "despacho", label: "Despacho", icon: "despacho", requiresAuth: true },
-  { id: "ajustar", label: "Ajustar", icon: "ajustar", requiresAuth: true },
+  { id: "ajustar", label: "Ajustes", icon: "ajustar", requiresAuth: true },
   {
     id: "historial",
     label: "Historial",
@@ -63,6 +63,49 @@ const ROLE_ALLOWED_TABS = {
   ],
   sucursal: ["stock", "pedidos", "despacho", "ajustar"],
   deposito: ["stock", "pedidos", "despacho", "ajustar"],
+};
+
+const TAB_HELP = {
+  stock: {
+    title: "Vista de stock global",
+    description:
+      "Consultá disponibilidad por sucursal, aplicá filtros rápidos y detectá faltantes.",
+  },
+  productos: {
+    title: "Gestión de productos",
+    description:
+      "Creá, editá y eliminá productos del catálogo con validación de códigos.",
+  },
+  pedidos: {
+    title: "Pedidos internos",
+    description:
+      "Generá solicitudes al depósito central y seguí el estado de cada pedido.",
+  },
+  despacho: {
+    title: "Despacho y recepción",
+    description:
+      "Despachá pedidos pendientes y confirmá recepciones en tránsito.",
+  },
+  ajustar: {
+    title: "Ajustes de stock",
+    description:
+      "Corregí cantidades por ubicación y dejá trazabilidad del motivo del ajuste.",
+  },
+  historial: {
+    title: "Historial de movimientos",
+    description:
+      "Revisá despachos, recepciones y ajustes registrados en orden cronológico.",
+  },
+  usuarios: {
+    title: "Permisos de usuarios",
+    description:
+      "Asigná roles y sucursales para controlar qué puede hacer cada cuenta.",
+  },
+  importar: {
+    title: "Importación masiva",
+    description:
+      "Subí archivos CSV o Excel para cargar productos en lote con vista previa.",
+  },
 };
 
 const TAB_ICONS = {
@@ -271,7 +314,10 @@ async function fetchPendingTransfers() {
 
 export default function App() {
   const queryClient = useQueryClient();
-  const [activeTab, setActiveTab] = useState("stock");
+  const [activeTab, setActiveTab] = useState(() => {
+    if (typeof window === "undefined") return "stock";
+    return window.localStorage.getItem("robles.activeTab") || "stock";
+  });
   const [toast, setToast] = useState(null);
   const [dispatchingId, setDispatchingId] = useState(null);
   const [receivingId, setReceivingId] = useState(null);
@@ -384,6 +430,11 @@ export default function App() {
       setActiveTab("stock");
     }
   }, [activeTab, session, userRole]);
+
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    window.localStorage.setItem("robles.activeTab", activeTab);
+  }, [activeTab]);
 
   const handleSignIn = async () => {
     if (!credentials.email || !credentials.password) return;
@@ -706,6 +757,39 @@ export default function App() {
     ),
   ).length;
 
+  const quickActions = [
+    {
+      id: "go-stock",
+      label: "Ver stock",
+      onClick: () => setActiveTab("stock"),
+      show: canAccessTab("stock"),
+    },
+    {
+      id: "go-pedidos",
+      label: "Nuevo pedido",
+      onClick: () => setActiveTab("pedidos"),
+      show: canAccessTab("pedidos"),
+    },
+    {
+      id: "go-despacho",
+      label: "Ver pendientes",
+      onClick: () => setActiveTab("despacho"),
+      show: canAccessTab("despacho") && pendingCount > 0,
+    },
+    {
+      id: "go-ajustes",
+      label: "Ajustar stock",
+      onClick: () => setActiveTab("ajustar"),
+      show: canAccessTab("ajustar"),
+    },
+    {
+      id: "go-usuarios",
+      label: "Gestionar usuarios",
+      onClick: () => setActiveTab("usuarios"),
+      show: canAccessTab("usuarios"),
+    },
+  ].filter((item) => item.show);
+
   return (
     <div className="min-h-screen bg-slate-950 text-slate-100">
       {/* ── Header ── */}
@@ -938,6 +1022,31 @@ export default function App() {
                     </button>
                   );
                 })}
+              </div>
+            </div>
+
+            <div className="mb-6 rounded-xl border border-slate-800 bg-slate-900/60 p-4">
+              <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
+                <div>
+                  <p className="text-sm font-semibold text-slate-100">
+                    {TAB_HELP[activeTab]?.title ?? "Sección"}
+                  </p>
+                  <p className="mt-1 text-xs text-slate-400">
+                    {TAB_HELP[activeTab]?.description ?? ""}
+                  </p>
+                </div>
+                <div className="flex flex-wrap items-center gap-2">
+                  {quickActions.map((action) => (
+                    <button
+                      key={action.id}
+                      type="button"
+                      onClick={action.onClick}
+                      className="rounded-lg border border-slate-700 bg-slate-950/70 px-3 py-1.5 text-xs font-semibold text-slate-300 transition hover:border-orange-400/50 hover:text-orange-300"
+                    >
+                      {action.label}
+                    </button>
+                  ))}
+                </div>
               </div>
             </div>
 
