@@ -199,7 +199,7 @@ function StatCard({ label, value, accent, icon }) {
   const s = styles[accent];
   return (
     <div
-      className={`relative overflow-hidden rounded-2xl border bg-gradient-to-br p-5 ${s.wrap}`}
+      className={`relative overflow-hidden rounded-2xl border bg-gradient-to-br p-4 md:p-5 ${s.wrap}`}
     >
       <div className={`absolute right-4 top-4 rounded-xl p-2 ${s.bg}`}>
         <div className={s.text}>{icon}</div>
@@ -208,7 +208,7 @@ function StatCard({ label, value, accent, icon }) {
         {label}
       </p>
       <p
-        className={`mt-1.5 text-4xl font-black leading-none tracking-tight ${s.text}`}
+        className={`mt-1.5 text-3xl font-black leading-none tracking-tight md:text-4xl ${s.text}`}
       >
         {value}
       </p>
@@ -808,10 +808,10 @@ export default function App() {
     <div className="min-h-screen bg-slate-950 text-slate-100">
       {/* ── Header ── */}
       <header className="sticky top-0 z-20 border-b border-slate-800/60 bg-slate-950/95 backdrop-blur-md">
-        <div className="mx-auto flex max-w-6xl items-center gap-3 px-4 py-3">
+        <div className="mx-auto flex max-w-6xl flex-wrap items-center gap-3 px-4 py-3">
           <div className="flex items-center gap-3">
             <img
-              src="/logo.jpg"
+              src="/assets/brand/logo.jpg"
               alt="Robles Pinturerias"
               className="h-10 w-10 shrink-0 rounded-xl object-cover shadow-lg shadow-orange-500/20"
             />
@@ -823,7 +823,7 @@ export default function App() {
             </div>
           </div>
 
-          <div className="ml-auto flex items-center gap-2">
+          <div className="ml-auto flex w-full flex-wrap items-center justify-end gap-2 sm:w-auto sm:flex-nowrap">
             {pendingCount > 0 && (
               <button
                 onClick={() => setActiveTab("despacho")}
@@ -834,11 +834,11 @@ export default function App() {
               </button>
             )}
             {session && (
-              <div className="flex items-center gap-2 rounded-xl border border-slate-700/60 bg-slate-900 py-1 pl-2 pr-1">
+              <div className="flex w-full flex-wrap items-center gap-2 rounded-xl border border-slate-700/60 bg-slate-900 py-1 pl-2 pr-1 sm:w-auto sm:flex-nowrap">
                 <div className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-sky-500 to-indigo-600 text-[10px] font-black text-white">
                   {session.user.email[0].toUpperCase()}
                 </div>
-                <span className="max-w-[150px] truncate text-xs text-slate-300">
+                <span className="min-w-0 flex-1 truncate text-xs text-slate-300 sm:max-w-[150px] sm:flex-none">
                   {session.user.email}
                 </span>
                 <span className="rounded-md border border-slate-700 bg-slate-800 px-1.5 py-0.5 text-[10px] font-semibold text-slate-300">
@@ -852,7 +852,7 @@ export default function App() {
                 <button
                   onClick={handleSignOut}
                   disabled={authSubmitting}
-                  className="rounded-lg px-2 py-1 text-[11px] font-medium text-slate-500 transition hover:bg-slate-800 hover:text-slate-200 disabled:opacity-50"
+                  className="ml-auto rounded-lg px-2 py-1 text-[11px] font-medium text-slate-500 transition hover:bg-slate-800 hover:text-slate-200 disabled:opacity-50 sm:ml-0"
                 >
                   Salir
                 </button>
@@ -882,7 +882,7 @@ export default function App() {
                   </p>
                 </div>
                 <img
-                  src="/logo.jpg"
+                  src="/assets/brand/logo.jpg"
                   alt="Robles Pinturerias"
                   className="h-24 w-24 rounded-2xl border border-white/10 object-cover shadow-lg shadow-orange-900/40 md:h-28 md:w-28"
                 />
@@ -982,15 +982,20 @@ export default function App() {
                 <div className="flex flex-col gap-3 md:flex-row md:items-start md:justify-between">
                   <div>
                     <p className="text-sm font-semibold text-orange-200">
-                      Guía rápida para {userRole === "administrador" ? "administrador" : "sucursal"}
+                      Guía rápida para{" "}
+                      {userRole === "administrador"
+                        ? "administrador"
+                        : "sucursal"}
                     </p>
                     {userRole === "administrador" ? (
                       <p className="mt-1 text-xs text-orange-100/90">
-                        Empezá por Usuarios para asignar permisos, luego cargá productos y controlá pedidos desde Despacho.
+                        Empezá por Usuarios para asignar permisos, luego cargá
+                        productos y controlá pedidos desde Despacho.
                       </p>
                     ) : (
                       <p className="mt-1 text-xs text-orange-100/90">
-                        Flujo recomendado: revisá Stock, generá Pedidos y seguí su avance en Despacho.
+                        Flujo recomendado: revisá Stock, generá Pedidos y seguí
+                        su avance en Despacho.
                       </p>
                     )}
                   </div>
@@ -1011,7 +1016,7 @@ export default function App() {
 
             {/* ── Tabs ── */}
             <div className="mb-6 overflow-x-auto pb-0.5">
-              <div className="flex min-w-max gap-0.5 rounded-xl border border-slate-800 bg-slate-900/60 p-1.5">
+              <div className="grid min-w-[320px] grid-cols-2 gap-1 rounded-xl border border-slate-800 bg-slate-900/60 p-1.5 sm:flex sm:min-w-max sm:gap-0.5">
                 {TABS.map((tab) => {
                   const isLocked = !canAccessTab(tab.id);
                   const isActive = activeTab === tab.id;
@@ -1035,7 +1040,7 @@ export default function App() {
                           ? "No tenés permisos para esta sección"
                           : undefined
                       }
-                      className={`relative flex items-center gap-2 rounded-lg px-4 py-2.5 text-sm font-medium transition-all duration-150 ${
+                      className={`relative flex items-center justify-center gap-2 rounded-lg px-3 py-2.5 text-sm font-medium transition-all duration-150 sm:justify-start sm:px-4 ${
                         isActive
                           ? "bg-slate-700 text-white shadow-md"
                           : isLocked
@@ -1081,13 +1086,13 @@ export default function App() {
                     {TAB_HELP[activeTab]?.description ?? ""}
                   </p>
                 </div>
-                <div className="flex flex-wrap items-center gap-2">
+                <div className="grid w-full grid-cols-1 gap-2 sm:w-auto sm:grid-cols-2 lg:flex lg:flex-wrap lg:items-center">
                   {quickActions.map((action) => (
                     <button
                       key={action.id}
                       type="button"
                       onClick={action.onClick}
-                      className="rounded-lg border border-slate-700 bg-slate-950/70 px-3 py-1.5 text-xs font-semibold text-slate-300 transition hover:border-orange-400/50 hover:text-orange-300"
+                      className="rounded-lg border border-slate-700 bg-slate-950/70 px-3 py-2 text-xs font-semibold text-slate-300 transition hover:border-orange-400/50 hover:text-orange-300"
                     >
                       {action.label}
                     </button>

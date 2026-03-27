@@ -24,7 +24,7 @@ export default function AuthPanel({
       <div className="p-6">
         <div className="mb-5 overflow-hidden rounded-xl border border-slate-600/60 bg-slate-900/30 p-3">
           <img
-            src="/logo.jpg"
+            src="/assets/brand/logo.jpg"
             alt="Robles Pinturerias"
             className="h-20 w-full rounded-lg object-cover"
           />
@@ -106,11 +106,11 @@ export default function AuthPanel({
               </div>
             </div>
 
-            <div className="flex flex-wrap items-center gap-2">
+            <div className="flex flex-col gap-2 sm:flex-row sm:flex-wrap sm:items-center">
               <button
                 type="submit"
                 disabled={authSubmitting}
-                className="flex items-center gap-2 rounded-xl bg-gradient-to-r from-orange-500 to-amber-500 px-5 py-2.5 text-sm font-semibold text-slate-950 shadow-lg shadow-orange-500/30 transition hover:from-orange-400 hover:to-amber-400 disabled:cursor-not-allowed disabled:opacity-60"
+                className="flex w-full items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-orange-500 to-amber-500 px-5 py-2.5 text-sm font-semibold text-slate-950 shadow-lg shadow-orange-500/30 transition hover:from-orange-400 hover:to-amber-400 disabled:cursor-not-allowed disabled:opacity-60 sm:w-auto"
               >
                 {authSubmitting ? (
                   <>
@@ -125,7 +125,7 @@ export default function AuthPanel({
                 type="button"
                 onClick={onResetPassword}
                 disabled={authSubmitting || !hasEmail}
-                className="ml-auto text-xs font-medium text-slate-300 transition hover:text-orange-300 disabled:cursor-not-allowed disabled:opacity-40"
+                className="text-left text-xs font-medium text-slate-300 transition hover:text-orange-300 disabled:cursor-not-allowed disabled:opacity-40 sm:ml-auto"
               >
                 Olvidé mi contraseña
               </button>

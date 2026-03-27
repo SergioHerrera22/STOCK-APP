@@ -81,7 +81,7 @@ function ProductForm({ title, form, setForm, onSubmit, submitLabel, loading }) {
         type="button"
         onClick={onSubmit}
         disabled={!canSubmit || loading}
-        className="mt-4 inline-flex items-center gap-2 rounded-xl bg-gradient-to-r from-sky-500 to-indigo-600 px-4 py-2.5 text-sm font-semibold text-white transition hover:opacity-95 disabled:cursor-not-allowed disabled:opacity-60"
+        className="mt-4 inline-flex w-full items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-sky-500 to-indigo-600 px-4 py-2.5 text-sm font-semibold text-white transition hover:opacity-95 disabled:cursor-not-allowed disabled:opacity-60 sm:w-auto"
       >
         {loading && (
           <span className="h-4 w-4 animate-spin rounded-full border-2 border-white/40 border-t-white" />
@@ -197,7 +197,7 @@ export default function ProductsCrudTab({
                 {products.length !== 1 ? "s" : ""}
               </p>
             </div>
-            <div className="flex gap-2">
+            <div className="flex w-full flex-col gap-2 md:w-auto md:flex-row">
               <ExportButton
                 data={filtered}
                 dataType="productos"
@@ -214,7 +214,80 @@ export default function ProductsCrudTab({
           </div>
         </div>
 
-        <div className="overflow-x-auto">
+        <div className="space-y-3 p-4 md:hidden">
+          {isLoading ? (
+            <div className="rounded-xl border border-slate-800 bg-slate-950/30 px-4 py-10 text-center text-slate-500">
+              Cargando productos...
+            </div>
+          ) : filtered.length === 0 ? (
+            <div className="rounded-xl border border-slate-800 bg-slate-950/30 px-4 py-10 text-center text-slate-500">
+              <div className="mx-auto flex max-w-sm flex-col items-center gap-2">
+                <p>No hay productos para mostrar.</p>
+                <p className="text-xs text-slate-600">
+                  Creá un producto manualmente o usá la pestaña Importar para
+                  cargar en lote.
+                </p>
+              </div>
+            </div>
+          ) : (
+            paginatedRows.map((p) => {
+              const rowLoading =
+                (isUpdating && updatingId === p.id) ||
+                (isDeleting && deletingId === p.id);
+              return (
+                <article
+                  key={`${p.id}-mobile`}
+                  className="rounded-xl border border-slate-800 bg-slate-950/40 p-4"
+                >
+                  <p className="text-sm font-semibold text-slate-100">
+                    {p.nombre}
+                  </p>
+                  <div className="mt-2 grid grid-cols-2 gap-2 text-xs">
+                    <div className="rounded-lg border border-slate-800 bg-slate-900/60 px-2.5 py-2">
+                      <p className="text-slate-500">Marca</p>
+                      <p className="mt-0.5 text-slate-200">{p.marca}</p>
+                    </div>
+                    <div className="rounded-lg border border-slate-800 bg-slate-900/60 px-2.5 py-2">
+                      <p className="text-slate-500">Categoría</p>
+                      <p className="mt-0.5 text-slate-200">{p.categoria}</p>
+                    </div>
+                    <div className="rounded-lg border border-slate-800 bg-slate-900/60 px-2.5 py-2">
+                      <p className="text-slate-500">Tamaño</p>
+                      <p className="mt-0.5 text-slate-200">{p.tamaño}</p>
+                    </div>
+                    <div className="rounded-lg border border-slate-800 bg-slate-900/60 px-2.5 py-2">
+                      <p className="text-slate-500">Código</p>
+                      <p className="mt-0.5 text-slate-200">
+                        {p.codigo_barras || "-"}
+                      </p>
+                    </div>
+                  </div>
+
+                  <div className="mt-3 grid grid-cols-2 gap-2">
+                    <button
+                      type="button"
+                      onClick={() => startEdit(p)}
+                      disabled={rowLoading}
+                      className="rounded-lg border border-slate-700 px-2.5 py-2 text-xs font-medium text-slate-300 transition hover:border-sky-500 hover:text-sky-300 disabled:opacity-60"
+                    >
+                      Editar
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => onDelete(p)}
+                      disabled={rowLoading}
+                      className="rounded-lg border border-rose-700/60 px-2.5 py-2 text-xs font-medium text-rose-300 transition hover:bg-rose-600/10 disabled:opacity-60"
+                    >
+                      Eliminar
+                    </button>
+                  </div>
+                </article>
+              );
+            })
+          )}
+        </div>
+
+        <div className="hidden overflow-x-auto md:block">
           <table className="min-w-full text-sm">
             <thead>
               <tr className="border-b border-slate-800 bg-slate-900">

@@ -101,7 +101,7 @@ export default function StockGlobalTable({ rows = [], isLoading }) {
     <div className="overflow-hidden rounded-2xl border border-slate-800 bg-slate-900 shadow-sm">
       {/* Header + filters */}
       <div className="space-y-3 border-b border-slate-800 px-5 py-4">
-        <div className="flex items-center justify-between gap-3">
+        <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
           <div>
             <h2 className="font-semibold text-slate-100">Stock global</h2>
             <p className="mt-0.5 text-xs text-slate-500">
@@ -110,7 +110,7 @@ export default function StockGlobalTable({ rows = [], isLoading }) {
                 : `${rows.length} producto${rows.length !== 1 ? "s" : ""} en el sistema`}
             </p>
           </div>
-          <div className="flex items-center gap-2">
+          <div className="flex w-full flex-wrap items-center gap-2 md:w-auto">
             <ExportButton
               data={filtered}
               dataType="stock"
@@ -208,7 +208,7 @@ export default function StockGlobalTable({ rows = [], isLoading }) {
       </div>
 
       {/* Legend */}
-      <div className="flex items-center gap-3 border-b border-slate-800/60 bg-slate-950/30 px-5 py-2 text-[11px] text-slate-600">
+      <div className="flex flex-wrap items-center gap-2 border-b border-slate-800/60 bg-slate-950/30 px-5 py-2 text-[11px] text-slate-600">
         <span className="font-medium">Leyenda:</span>
         <span className="rounded-md bg-rose-500/15 px-1.5 py-0.5 font-semibold text-rose-400">
           Sin stock
@@ -221,8 +221,77 @@ export default function StockGlobalTable({ rows = [], isLoading }) {
         </span>
       </div>
 
+      {/* Mobile cards */}
+      <div className="space-y-3 p-4 md:hidden">
+        {isLoading ? (
+          [...Array(4)].map((_, i) => (
+            <div
+              key={i}
+              className="animate-pulse rounded-xl border border-slate-800 bg-slate-950/30 p-4"
+            >
+              <div className="h-4 w-40 rounded bg-slate-800" />
+              <div className="mt-3 grid grid-cols-2 gap-2">
+                {[...Array(4)].map((__, j) => (
+                  <div key={j} className="h-8 rounded bg-slate-800" />
+                ))}
+              </div>
+            </div>
+          ))
+        ) : filtered.length === 0 ? (
+          <div className="rounded-xl border border-slate-800 bg-slate-950/30 px-4 py-10 text-center">
+            <div className="mx-auto mb-3 flex h-12 w-12 items-center justify-center rounded-xl border border-slate-800 bg-slate-950 text-2xl">
+              {search ? "🔍" : "📦"}
+            </div>
+            <p className="font-medium text-slate-400">
+              {search
+                ? `Sin resultados para "${search}"`
+                : "No hay productos cargados"}
+            </p>
+            <p className="mt-1 text-xs text-slate-600">
+              {search
+                ? "Probá con otro término de búsqueda."
+                : "Importá un CSV para empezar."}
+            </p>
+          </div>
+        ) : (
+          paginatedRows.map((row) => (
+            <article
+              key={row.id}
+              className="rounded-xl border border-slate-800 bg-slate-950/40 p-4"
+            >
+              <p className="text-sm font-semibold text-slate-100">
+                {row.nombre}
+              </p>
+              {(row.marca || row.categoria || row.tamaño) && (
+                <p className="mt-1 text-xs text-slate-500">
+                  {[row.marca, row.categoria, row.tamaño]
+                    .filter(Boolean)
+                    .join(" · ")}
+                </p>
+              )}
+
+              <div className="mt-3 grid grid-cols-2 gap-2">
+                {LOCATIONS.map((loc) => (
+                  <div
+                    key={`${row.id}-${loc.key}-mobile`}
+                    className="rounded-lg border border-slate-800 bg-slate-900/60 px-2.5 py-2"
+                  >
+                    <p className="text-[11px] font-semibold uppercase tracking-wide text-slate-500">
+                      {loc.label}
+                    </p>
+                    <div className="mt-1">
+                      <StockBadge value={row[loc.key] ?? 0} />
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </article>
+          ))
+        )}
+      </div>
+
       {/* Table */}
-      <div className="overflow-x-auto">
+      <div className="hidden overflow-x-auto md:block">
         <table className="min-w-full text-sm">
           <thead className="sticky top-0 z-10">
             <tr className="border-b border-slate-800 bg-slate-900">
