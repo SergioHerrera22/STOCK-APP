@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import ExportButton from "./ExportButton";
+import PaginationControls from "./PaginationControls";
 
 const EMPTY_FORM = {
   nombre: "",
@@ -107,6 +108,8 @@ export default function ProductsCrudTab({
   const [createForm, setCreateForm] = useState(EMPTY_FORM);
   const [editId, setEditId] = useState(null);
   const [editForm, setEditForm] = useState(EMPTY_FORM);
+  const [page, setPage] = useState(1);
+  const pageSize = 12;
 
   useEffect(() => {
     if (!editId) return;
@@ -126,6 +129,16 @@ export default function ProductsCrudTab({
         .some((v) => String(v).toLowerCase().includes(term)),
     );
   }, [products, search]);
+
+  useEffect(() => {
+    setPage(1);
+  }, [search, products.length]);
+
+  const totalPages = Math.max(1, Math.ceil(filtered.length / pageSize));
+  const safePage = Math.min(page, totalPages);
+  const startIndex = (safePage - 1) * pageSize;
+  const endIndex = startIndex + pageSize;
+  const paginatedRows = filtered.slice(startIndex, endIndex);
 
   const startEdit = (product) => {
     setEditId(product.id);
@@ -241,11 +254,17 @@ export default function ProductsCrudTab({
                     colSpan={6}
                     className="px-4 py-10 text-center text-slate-500"
                   >
-                    No hay productos para mostrar.
+                    <div className="mx-auto flex max-w-sm flex-col items-center gap-2">
+                      <p>No hay productos para mostrar.</p>
+                      <p className="text-xs text-slate-600">
+                        Creá un producto manualmente o usá la pestaña Importar
+                        para cargar en lote.
+                      </p>
+                    </div>
                   </td>
                 </tr>
               ) : (
-                filtered.map((p, idx) => {
+                paginatedRows.map((p, idx) => {
                   const rowLoading =
                     (isUpdating && updatingId === p.id) ||
                     (isDeleting && deletingId === p.id);
@@ -293,6 +312,13 @@ export default function ProductsCrudTab({
             </tbody>
           </table>
         </div>
+
+        <PaginationControls
+          currentPage={safePage}
+          totalPages={totalPages}
+          onPageChange={setPage}
+          label={`Mostrando ${filtered.length === 0 ? 0 : startIndex + 1}-${Math.min(endIndex, filtered.length)} de ${filtered.length} productos`}
+        />
       </div>
 
       {editId && (

@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { supabase } from "../lib/supabaseClient";
+import PaginationControls from "./PaginationControls";
 
 const ROLES = [
   { value: "sucursal", label: "Sucursal" },
@@ -19,6 +20,8 @@ export default function UsersPermissionsTab({ onSaved }) {
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState("");
   const [success, setSuccess] = useState("");
+  const [page, setPage] = useState(1);
+  const pageSize = 10;
 
   const [form, setForm] = useState({
     email: "",
@@ -109,6 +112,16 @@ export default function UsersPermissionsTab({ onSaved }) {
       })),
     [profiles],
   );
+
+  useEffect(() => {
+    setPage(1);
+  }, [profiles.length]);
+
+  const totalPages = Math.max(1, Math.ceil(mappedRows.length / pageSize));
+  const safePage = Math.min(page, totalPages);
+  const startIndex = (safePage - 1) * pageSize;
+  const endIndex = startIndex + pageSize;
+  const paginatedRows = mappedRows.slice(startIndex, endIndex);
 
   return (
     <div className="space-y-5">
@@ -203,7 +216,11 @@ export default function UsersPermissionsTab({ onSaved }) {
           </div>
         ) : mappedRows.length === 0 ? (
           <div className="px-5 py-6 text-sm text-slate-500">
-            No hay perfiles cargados.
+            <p>No hay perfiles cargados.</p>
+            <p className="mt-1 text-xs text-slate-600">
+              Primero creá usuarios en Supabase Auth y luego asignales permisos
+              desde este formulario.
+            </p>
           </div>
         ) : (
           <div className="overflow-x-auto">
@@ -225,7 +242,7 @@ export default function UsersPermissionsTab({ onSaved }) {
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-800/60">
-                {mappedRows.map((row) => (
+                {paginatedRows.map((row) => (
                   <tr key={row.id} className="hover:bg-slate-800/30">
                     <td className="px-4 py-3 text-slate-200">{row.email}</td>
                     <td className="px-4 py-3 text-slate-300">{row.rolLabel}</td>
@@ -253,6 +270,13 @@ export default function UsersPermissionsTab({ onSaved }) {
             </table>
           </div>
         )}
+
+        <PaginationControls
+          currentPage={safePage}
+          totalPages={totalPages}
+          onPageChange={setPage}
+          label={`Mostrando ${mappedRows.length === 0 ? 0 : startIndex + 1}-${Math.min(endIndex, mappedRows.length)} de ${mappedRows.length} usuarios`}
+        />
       </div>
     </div>
   );

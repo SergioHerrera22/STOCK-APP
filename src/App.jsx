@@ -14,6 +14,8 @@ import ExportButton from "./components/ExportButton";
 import { mapSupabaseError } from "./lib/errorMapper";
 import { supabase } from "./lib/supabaseClient";
 
+const ONBOARDING_KEY_PREFIX = "robles.onboarding.dismissed";
+
 const TABS = [
   { id: "stock", label: "Stock", icon: "stock", requiresAuth: true },
   {
@@ -330,6 +332,7 @@ export default function App() {
   const [authLoading, setAuthLoading] = useState(true);
   const [authSubmitting, setAuthSubmitting] = useState(false);
   const [credentials, setCredentials] = useState({ email: "", password: "" });
+  const [showOnboarding, setShowOnboarding] = useState(false);
 
   const currentEmail = session?.user?.email?.toLowerCase() ?? null;
   const isAdminUser = currentEmail === ADMIN_EMAIL;
@@ -430,6 +433,17 @@ export default function App() {
       setActiveTab("stock");
     }
   }, [activeTab, session, userRole]);
+
+  useEffect(() => {
+    if (!session || !userRole) {
+      setShowOnboarding(false);
+      return;
+    }
+
+    const key = `${ONBOARDING_KEY_PREFIX}.${userRole}`;
+    const dismissed = window.localStorage.getItem(key) === "1";
+    setShowOnboarding(!dismissed);
+  }, [session, userRole]);
 
   useEffect(() => {
     if (typeof window === "undefined") return;
@@ -963,6 +977,38 @@ export default function App() {
 
             <StockAlertBanner stock={stockQuery.data} threshold={10} />
 
+            {showOnboarding && (
+              <div className="mb-6 rounded-xl border border-orange-400/30 bg-orange-500/10 p-4">
+                <div className="flex flex-col gap-3 md:flex-row md:items-start md:justify-between">
+                  <div>
+                    <p className="text-sm font-semibold text-orange-200">
+                      Guía rápida para {userRole === "administrador" ? "administrador" : "sucursal"}
+                    </p>
+                    {userRole === "administrador" ? (
+                      <p className="mt-1 text-xs text-orange-100/90">
+                        Empezá por Usuarios para asignar permisos, luego cargá productos y controlá pedidos desde Despacho.
+                      </p>
+                    ) : (
+                      <p className="mt-1 text-xs text-orange-100/90">
+                        Flujo recomendado: revisá Stock, generá Pedidos y seguí su avance en Despacho.
+                      </p>
+                    )}
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      const key = `${ONBOARDING_KEY_PREFIX}.${userRole}`;
+                      window.localStorage.setItem(key, "1");
+                      setShowOnboarding(false);
+                    }}
+                    className="rounded-lg border border-orange-300/40 px-3 py-1.5 text-xs font-semibold text-orange-100 transition hover:bg-orange-400/10"
+                  >
+                    Entendido
+                  </button>
+                </div>
+              </div>
+            )}
+
             {/* ── Tabs ── */}
             <div className="mb-6 overflow-x-auto pb-0.5">
               <div className="flex min-w-max gap-0.5 rounded-xl border border-slate-800 bg-slate-900/60 p-1.5">
@@ -1142,6 +1188,7 @@ export default function App() {
               <MovimientosTab
                 movimientos={movimientosQuery.data}
                 isLoading={movimientosQuery.isLoading}
+                onGoToDespacho={() => setActiveTab("despacho")}
               />
             )}
             {activeTab === "usuarios" && canAccessTab("usuarios") && (

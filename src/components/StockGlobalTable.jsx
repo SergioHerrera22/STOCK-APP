@@ -1,5 +1,6 @@
-import { useState, useMemo } from "react";
+import { useEffect, useState, useMemo } from "react";
 import ExportButton from "./ExportButton";
+import PaginationControls from "./PaginationControls";
 
 const LOCATIONS = [
   { key: "sucursal_1", label: "CAPITAL", accent: "text-violet-400" },
@@ -48,6 +49,8 @@ export default function StockGlobalTable({ rows = [], isLoading }) {
   const [marca, setMarca] = useState("todas");
   const [categoria, setCategoria] = useState("todas");
   const [criticalOnly, setCriticalOnly] = useState(false);
+  const [page, setPage] = useState(1);
+  const pageSize = 12;
 
   const marcas = useMemo(
     () => ["todas", ...new Set(rows.map((r) => r.marca).filter(Boolean))],
@@ -83,6 +86,16 @@ export default function StockGlobalTable({ rows = [], isLoading }) {
 
   const hasActiveFilter =
     search || marca !== "todas" || categoria !== "todas" || criticalOnly;
+
+  useEffect(() => {
+    setPage(1);
+  }, [search, marca, categoria, criticalOnly]);
+
+  const totalPages = Math.max(1, Math.ceil(filtered.length / pageSize));
+  const safePage = Math.min(page, totalPages);
+  const startIndex = (safePage - 1) * pageSize;
+  const endIndex = startIndex + pageSize;
+  const paginatedRows = filtered.slice(startIndex, endIndex);
 
   return (
     <div className="overflow-hidden rounded-2xl border border-slate-800 bg-slate-900 shadow-sm">
@@ -248,7 +261,7 @@ export default function StockGlobalTable({ rows = [], isLoading }) {
                 </td>
               </tr>
             ) : (
-              filtered.map((row, idx) => (
+              paginatedRows.map((row, idx) => (
                 <tr
                   key={row.id}
                   className={`border-b border-slate-800/40 transition-colors hover:bg-slate-800/30 ${
@@ -281,6 +294,13 @@ export default function StockGlobalTable({ rows = [], isLoading }) {
           </tbody>
         </table>
       </div>
+
+      <PaginationControls
+        currentPage={safePage}
+        totalPages={totalPages}
+        onPageChange={setPage}
+        label={`Mostrando ${filtered.length === 0 ? 0 : startIndex + 1}-${Math.min(endIndex, filtered.length)} de ${filtered.length} productos`}
+      />
     </div>
   );
 }

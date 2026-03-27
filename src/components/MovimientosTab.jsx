@@ -5,6 +5,8 @@ const TIPO_STYLES = {
 };
 
 import ExportButton from "./ExportButton";
+import PaginationControls from "./PaginationControls";
+import { useState } from "react";
 
 const TIPO_LABELS = {
   despacho: "Despacho",
@@ -30,7 +32,14 @@ function formatDate(ts) {
   });
 }
 
-export default function MovimientosTab({ movimientos, isLoading }) {
+export default function MovimientosTab({
+  movimientos,
+  isLoading,
+  onGoToDespacho,
+}) {
+  const [page, setPage] = useState(1);
+  const pageSize = 20;
+
   if (isLoading) {
     return (
       <div className="flex items-center justify-center py-20 text-slate-500 text-sm">
@@ -40,6 +49,11 @@ export default function MovimientosTab({ movimientos, isLoading }) {
   }
 
   const rows = movimientos ?? [];
+  const totalPages = Math.max(1, Math.ceil(rows.length / pageSize));
+  const safePage = Math.min(page, totalPages);
+  const startIndex = (safePage - 1) * pageSize;
+  const endIndex = startIndex + pageSize;
+  const paginatedRows = rows.slice(startIndex, endIndex);
 
   return (
     <div className="overflow-hidden rounded-2xl border border-slate-800 bg-slate-900 shadow-sm">
@@ -66,10 +80,23 @@ export default function MovimientosTab({ movimientos, isLoading }) {
         <div className="flex flex-col items-center justify-center gap-2 py-16 text-slate-600">
           <span className="text-3xl">📋</span>
           <p className="text-sm">Todavía no hay movimientos registrados.</p>
+          <p className="text-xs text-slate-500">
+            Despachá o ajustá stock para generar trazabilidad automática.
+          </p>
+          {onGoToDespacho && (
+            <button
+              type="button"
+              onClick={onGoToDespacho}
+              className="mt-2 rounded-lg border border-slate-700 px-3 py-1.5 text-xs font-semibold text-slate-300 transition hover:border-orange-400/60 hover:text-orange-300"
+            >
+              Ir a Despacho
+            </button>
+          )}
         </div>
       ) : (
-        <div className="overflow-x-auto">
-          <table className="min-w-full text-sm">
+        <>
+          <div className="overflow-x-auto">
+            <table className="min-w-full text-sm">
             <thead>
               <tr className="border-b border-slate-800 bg-slate-950/60">
                 <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-slate-500">
@@ -96,7 +123,7 @@ export default function MovimientosTab({ movimientos, isLoading }) {
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-800/60">
-              {rows.map((mov) => (
+              {paginatedRows.map((mov) => (
                 <tr key={mov.id} className="hover:bg-slate-800/30">
                   <td className="whitespace-nowrap px-4 py-3 text-xs text-slate-500">
                     {formatDate(mov.creado_at)}
@@ -129,7 +156,15 @@ export default function MovimientosTab({ movimientos, isLoading }) {
               ))}
             </tbody>
           </table>
-        </div>
+          </div>
+
+          <PaginationControls
+            currentPage={safePage}
+            totalPages={totalPages}
+            onPageChange={setPage}
+            label={`Mostrando ${rows.length === 0 ? 0 : startIndex + 1}-${Math.min(endIndex, rows.length)} de ${rows.length} movimientos`}
+          />
+        </>
       )}
     </div>
   );
