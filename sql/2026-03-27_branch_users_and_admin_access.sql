@@ -13,9 +13,18 @@ stable
 security definer
 set search_path = public
 as $$
-  select p.rol
-  from public.perfiles p
-  where p.id = auth.uid();
+  select coalesce(
+    (
+      select p.rol
+      from public.perfiles p
+      where p.id = auth.uid()
+    ),
+    case
+      when lower(coalesce(auth.jwt() ->> 'email', '')) = 'admin@robles.com'
+        then 'administrador'::public.rol_usuario
+      else 'sucursal'::public.rol_usuario
+    end
+  );
 $$;
 
 create or replace function public.is_admin()
@@ -25,7 +34,7 @@ stable
 security definer
 set search_path = public
 as $$
-  select coalesce(public.current_user_role() = 'administrador', false);
+  select lower(coalesce(auth.jwt() ->> 'email', '')) = 'admin@robles.com';
 $$;
 
 -- -------------------------------------------------------------------
@@ -178,10 +187,12 @@ commit;
 -- CONFIGURACION ROBLES (usuarios y perfiles)
 -- -------------------------------------------------------------------
 -- 1) Crear estos usuarios en Supabase Auth > Users > Add user:
---    - rawson@robles.com  / clave: rawson
---    - capital@robles.com / clave: capital
---    - falucho@robles.com / clave: falucho
---    - admin@robles.com   / clave: adminrobles
+--    - rawson@robles.com
+--    - capital@robles.com
+--    - falucho@robles.com
+--    - admin@robles.com
+--    IMPORTANTE: no guardar contraseñas reales en archivos del repo.
+--    Definir las claves directamente en el panel de Supabase Auth.
 --
 -- 2) Ejecutar este bloque para asignar rol y sucursal en public.perfiles.
 

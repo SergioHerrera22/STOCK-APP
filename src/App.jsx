@@ -8,6 +8,7 @@ import AuthPanel from "./components/AuthPanel";
 import StockAdjustTab from "./components/StockAdjustTab";
 import MovimientosTab from "./components/MovimientosTab";
 import ProductsCrudTab from "./components/ProductsCrudTab";
+import UsersPermissionsTab from "./components/UsersPermissionsTab";
 import StockAlertBanner from "./components/StockAlertBanner";
 import ExportButton from "./components/ExportButton";
 import { mapSupabaseError } from "./lib/errorMapper";
@@ -30,6 +31,7 @@ const TABS = [
     icon: "historial",
     requiresAuth: true,
   },
+  { id: "usuarios", label: "Usuarios", icon: "usuarios", requiresAuth: true },
   { id: "importar", label: "Importar", icon: "importar", requiresAuth: true },
 ];
 
@@ -46,6 +48,8 @@ const BRANCH_LABELS = {
   deposito_central: "Depósito Central",
 };
 
+const ADMIN_EMAIL = "admin@robles.com";
+
 const ROLE_ALLOWED_TABS = {
   administrador: [
     "stock",
@@ -54,6 +58,7 @@ const ROLE_ALLOWED_TABS = {
     "despacho",
     "ajustar",
     "historial",
+    "usuarios",
     "importar",
   ],
   sucursal: ["stock", "pedidos", "despacho", "ajustar"],
@@ -105,6 +110,11 @@ const TAB_ICONS = {
         d="M10 18a8 8 0 100-16 8 8 0 000 16zm1-12a1 1 0 10-2 0v4a1 1 0 00.293.707l2.828 2.829a1 1 0 101.415-1.415L11 9.586V6z"
         clipRule="evenodd"
       />
+    </svg>
+  ),
+  usuarios: (
+    <svg viewBox="0 0 20 20" fill="currentColor" className="h-4 w-4">
+      <path d="M7 9a3 3 0 100-6 3 3 0 000 6zM13 10a2.5 2.5 0 100-5 2.5 2.5 0 000 5zM1.5 16.5A4.5 4.5 0 016 12h2a4.5 4.5 0 014.5 4.5.5.5 0 01-.5.5H2a.5.5 0 01-.5-.5zM12 16.5a3.5 3.5 0 013.5-3.5H16a3.5 3.5 0 013.5 3.5.5.5 0 01-.5.5h-6.5a.5.5 0 01-.5-.5z" />
     </svg>
   ),
   importar: (
@@ -275,9 +285,16 @@ export default function App() {
   const [authSubmitting, setAuthSubmitting] = useState(false);
   const [credentials, setCredentials] = useState({ email: "", password: "" });
 
-  const userRole = perfil?.rol ?? null;
-  const allowedTabs = userRole
-    ? (ROLE_ALLOWED_TABS[userRole] ?? ["stock"])
+  const currentEmail = session?.user?.email?.toLowerCase() ?? null;
+  const isAdminUser = currentEmail === ADMIN_EMAIL;
+  const effectiveRole = session
+    ? isAdminUser
+      ? "administrador"
+      : "sucursal"
+    : null;
+  const userRole = effectiveRole;
+  const allowedTabs = effectiveRole
+    ? (ROLE_ALLOWED_TABS[effectiveRole] ?? ["stock"])
     : ["stock"];
 
   const canAccessTab = (tabId) => {
@@ -348,11 +365,11 @@ export default function App() {
       }
 
       if (!data) {
-        setPerfil(null);
-        showToast(
-          "Tu usuario no tiene perfil asignado. Pedí al admin que te habilite.",
-          "error",
-        );
+        setPerfil({
+          rol: isAdminUser ? "administrador" : "sucursal",
+          sucursal_id: null,
+          email: session.user.email,
+        });
         return;
       }
 
@@ -360,7 +377,7 @@ export default function App() {
     };
 
     loadPerfil();
-  }, [session]);
+  }, [session, isAdminUser]);
 
   useEffect(() => {
     if (!canAccessTab(activeTab)) {
@@ -427,20 +444,32 @@ export default function App() {
   const productosQuery = useQuery({
     queryKey: ["productos"],
     queryFn: fetchProductos,
+    enabled: Boolean(session),
   });
   const stockQuery = useQuery({
     queryKey: ["stock-global"],
     queryFn: fetchStockGlobal,
+    enabled: Boolean(session),
   });
   const transfersQuery = useQuery({
     queryKey: ["transferencias-pendientes"],
     queryFn: fetchPendingTransfers,
+    enabled: Boolean(session),
   });
   const movimientosQuery = useQuery({
     queryKey: ["movimientos"],
     queryFn: fetchMovimientos,
     enabled: Boolean(session),
   });
+
+  useEffect(() => {
+    if (session) return;
+
+    queryClient.removeQueries({ queryKey: ["productos"] });
+    queryClient.removeQueries({ queryKey: ["stock-global"] });
+    queryClient.removeQueries({ queryKey: ["transferencias-pendientes"] });
+    queryClient.removeQueries({ queryKey: ["movimientos"] });
+  }, [session, queryClient]);
 
   const createOrderMutation = useMutation({
     mutationFn: async (payload) => {
@@ -744,67 +773,7 @@ export default function App() {
       </header>
 
       <div className="mx-auto max-w-6xl px-4 py-8">
-        {/* ── Stats ── */}
-        <div className="mb-8 grid grid-cols-2 gap-4 md:grid-cols-4">
-          <StatCard
-            label="Productos"
-            value={totalProducts}
-            accent="sky"
-            icon={
-              <svg viewBox="0 0 20 20" fill="currentColor" className="h-5 w-5">
-                <path d="M4 3a2 2 0 100 4h12a2 2 0 100-4H4z" />
-                <path
-                  fillRule="evenodd"
-                  d="M3 8h14v7a2 2 0 01-2 2H5a2 2 0 01-2-2V8zm5 3a1 1 0 011-1h2a1 1 0 110 2H9a1 1 0 01-1-1z"
-                  clipRule="evenodd"
-                />
-              </svg>
-            }
-          />
-          <StatCard
-            label="Pendientes"
-            value={pendingCount}
-            accent="amber"
-            icon={
-              <svg viewBox="0 0 20 20" fill="currentColor" className="h-5 w-5">
-                <path
-                  fillRule="evenodd"
-                  d="M10 18a8 8 0 100-16 8 8 0 000 16zm1-12a1 1 0 10-2 0v4a1 1 0 00.293.707l2.828 2.829a1 1 0 101.415-1.415L11 9.586V6z"
-                  clipRule="evenodd"
-                />
-              </svg>
-            }
-          />
-          <StatCard
-            label="Stock crítico"
-            value={criticalProducts}
-            accent="violet"
-            icon={
-              <svg viewBox="0 0 20 20" fill="currentColor" className="h-5 w-5">
-                <path
-                  fillRule="evenodd"
-                  d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z"
-                  clipRule="evenodd"
-                />
-              </svg>
-            }
-          />
-          <StatCard
-            label="En tránsito"
-            value={inTransitCount}
-            accent="emerald"
-            icon={
-              <svg viewBox="0 0 20 20" fill="currentColor" className="h-5 w-5">
-                <path d="M8 16.5a1.5 1.5 0 11-3 0 1.5 1.5 0 013 0zM15 16.5a1.5 1.5 0 11-3 0 1.5 1.5 0 013 0z" />
-                <path d="M3 4a1 1 0 00-1 1v10a1 1 0 001 1h1.05a2.5 2.5 0 014.9 0H11a1 1 0 001-1v-5h2.038A2 2 0 0116 11.446V15h-.05a2.5 2.5 0 01-4.9 0H9a2 2 0 01-2-2V5a1 1 0 00-1-1H3z" />
-              </svg>
-            }
-          />
-        </div>
-
-        <StockAlertBanner stock={stockQuery.data} threshold={10} />
-
-        {!session && (
+        {!session ? (
           <AuthPanel
             session={session}
             authLoading={authLoading}
@@ -814,187 +783,262 @@ export default function App() {
             onSignIn={handleSignIn}
             onResetPassword={handleResetPassword}
           />
-        )}
+        ) : (
+          <>
+            {/* ── Stats ── */}
+            <div className="mb-8 grid grid-cols-2 gap-4 md:grid-cols-4">
+              <StatCard
+                label="Productos"
+                value={totalProducts}
+                accent="sky"
+                icon={
+                  <svg
+                    viewBox="0 0 20 20"
+                    fill="currentColor"
+                    className="h-5 w-5"
+                  >
+                    <path d="M4 3a2 2 0 100 4h12a2 2 0 100-4H4z" />
+                    <path
+                      fillRule="evenodd"
+                      d="M3 8h14v7a2 2 0 01-2 2H5a2 2 0 01-2-2V8zm5 3a1 1 0 011-1h2a1 1 0 110 2H9a1 1 0 01-1-1z"
+                      clipRule="evenodd"
+                    />
+                  </svg>
+                }
+              />
+              <StatCard
+                label="Pendientes"
+                value={pendingCount}
+                accent="amber"
+                icon={
+                  <svg
+                    viewBox="0 0 20 20"
+                    fill="currentColor"
+                    className="h-5 w-5"
+                  >
+                    <path
+                      fillRule="evenodd"
+                      d="M10 18a8 8 0 100-16 8 8 0 000 16zm1-12a1 1 0 10-2 0v4a1 1 0 00.293.707l2.828 2.829a1 1 0 101.415-1.415L11 9.586V6z"
+                      clipRule="evenodd"
+                    />
+                  </svg>
+                }
+              />
+              <StatCard
+                label="Stock crítico"
+                value={criticalProducts}
+                accent="violet"
+                icon={
+                  <svg
+                    viewBox="0 0 20 20"
+                    fill="currentColor"
+                    className="h-5 w-5"
+                  >
+                    <path
+                      fillRule="evenodd"
+                      d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z"
+                      clipRule="evenodd"
+                    />
+                  </svg>
+                }
+              />
+              <StatCard
+                label="En tránsito"
+                value={inTransitCount}
+                accent="emerald"
+                icon={
+                  <svg
+                    viewBox="0 0 20 20"
+                    fill="currentColor"
+                    className="h-5 w-5"
+                  >
+                    <path d="M8 16.5a1.5 1.5 0 11-3 0 1.5 1.5 0 013 0zM15 16.5a1.5 1.5 0 11-3 0 1.5 1.5 0 013 0z" />
+                    <path d="M3 4a1 1 0 00-1 1v10a1 1 0 001 1h1.05a2.5 2.5 0 014.9 0H11a1 1 0 001-1v-5h2.038A2 2 0 0116 11.446V15h-.05a2.5 2.5 0 01-4.9 0H9a2 2 0 01-2-2V5a1 1 0 00-1-1H3z" />
+                  </svg>
+                }
+              />
+            </div>
 
-        {/* ── Tabs ── */}
-        <div className="mb-6 overflow-x-auto pb-0.5">
-          <div className="flex min-w-max gap-0.5 rounded-xl border border-slate-800 bg-slate-900/60 p-1.5">
-            {TABS.map((tab) => {
-              const isLocked = !canAccessTab(tab.id);
-              const isActive = activeTab === tab.id;
-              return (
-                <button
-                  key={tab.id}
-                  onClick={() => {
-                    if (canAccessTab(tab.id)) {
-                      setActiveTab(tab.id);
-                      return;
-                    }
+            <StockAlertBanner stock={stockQuery.data} threshold={10} />
 
-                    if (!session) {
-                      showToast(
-                        "Iniciá sesión para acceder a esta sección.",
-                        "error",
-                      );
-                      return;
-                    }
+            {/* ── Tabs ── */}
+            <div className="mb-6 overflow-x-auto pb-0.5">
+              <div className="flex min-w-max gap-0.5 rounded-xl border border-slate-800 bg-slate-900/60 p-1.5">
+                {TABS.map((tab) => {
+                  const isLocked = !canAccessTab(tab.id);
+                  const isActive = activeTab === tab.id;
+                  return (
+                    <button
+                      key={tab.id}
+                      onClick={() => {
+                        if (canAccessTab(tab.id)) {
+                          setActiveTab(tab.id);
+                          return;
+                        }
 
+                        showToast(
+                          "Tu rol no tiene acceso a esta sección.",
+                          "error",
+                        );
+                      }}
+                      disabled={isLocked}
+                      title={
+                        isLocked
+                          ? "No tenés permisos para esta sección"
+                          : undefined
+                      }
+                      className={`relative flex items-center gap-2 rounded-lg px-4 py-2.5 text-sm font-medium transition-all duration-150 ${
+                        isActive
+                          ? "bg-slate-700 text-white shadow-md"
+                          : isLocked
+                            ? "cursor-not-allowed text-slate-700"
+                            : "text-slate-400 hover:bg-slate-800/70 hover:text-slate-200"
+                      }`}
+                    >
+                      <span className={isLocked ? "opacity-40" : ""}>
+                        {TAB_ICONS[tab.icon]}
+                      </span>
+                      <span>{tab.label}</span>
+                      {isLocked && (
+                        <svg
+                          className="h-3 w-3 shrink-0 opacity-40"
+                          viewBox="0 0 16 16"
+                          fill="currentColor"
+                        >
+                          <path
+                            fillRule="evenodd"
+                            d="M8 1a3.5 3.5 0 00-3.5 3.5V6H3a1 1 0 00-1 1v7a1 1 0 001 1h10a1 1 0 001-1V7a1 1 0 00-1-1h-1.5V4.5A3.5 3.5 0 008 1zm2 5V4.5a2 2 0 10-4 0V6h4z"
+                            clipRule="evenodd"
+                          />
+                        </svg>
+                      )}
+                      {tab.id === "despacho" && pendingCount > 0 && (
+                        <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-amber-500 text-[10px] font-black text-slate-900">
+                          {pendingCount}
+                        </span>
+                      )}
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+
+            {/* ── Tab content ── */}
+            {activeTab === "stock" && canAccessTab("stock") && (
+              <StockGlobalTable
+                rows={stockQuery.data}
+                isLoading={stockQuery.isLoading}
+              />
+            )}
+            {activeTab === "productos" && canAccessTab("productos") && (
+              <ProductsCrudTab
+                products={productosQuery.data}
+                isLoading={productosQuery.isLoading}
+                onCreate={(payload) => createProductMutation.mutate(payload)}
+                onUpdate={(payload) => updateProductMutation.mutate(payload)}
+                onDelete={(product) => {
+                  if (!session) {
                     showToast(
-                      "Tu rol no tiene acceso a esta sección.",
+                      "Inicia sesion para eliminar productos.",
                       "error",
                     );
-                  }}
-                  disabled={isLocked}
-                  title={
-                    !session && tab.requiresAuth
-                      ? "Requiere sesión iniciada"
-                      : isLocked
-                        ? "No tenés permisos para esta sección"
-                        : undefined
+                    return;
                   }
-                  className={`relative flex items-center gap-2 rounded-lg px-4 py-2.5 text-sm font-medium transition-all duration-150 ${
-                    isActive
-                      ? "bg-slate-700 text-white shadow-md"
-                      : isLocked
-                        ? "cursor-not-allowed text-slate-700"
-                        : "text-slate-400 hover:bg-slate-800/70 hover:text-slate-200"
-                  }`}
-                >
-                  <span className={isLocked ? "opacity-40" : ""}>
-                    {TAB_ICONS[tab.icon]}
-                  </span>
-                  <span>{tab.label}</span>
-                  {isLocked && (
-                    <svg
-                      className="h-3 w-3 shrink-0 opacity-40"
-                      viewBox="0 0 16 16"
-                      fill="currentColor"
-                    >
-                      <path
-                        fillRule="evenodd"
-                        d="M8 1a3.5 3.5 0 00-3.5 3.5V6H3a1 1 0 00-1 1v7a1 1 0 001 1h10a1 1 0 001-1V7a1 1 0 00-1-1h-1.5V4.5A3.5 3.5 0 008 1zm2 5V4.5a2 2 0 10-4 0V6h4z"
-                        clipRule="evenodd"
-                      />
-                    </svg>
-                  )}
-                  {tab.id === "despacho" && pendingCount > 0 && (
-                    <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-amber-500 text-[10px] font-black text-slate-900">
-                      {pendingCount}
-                    </span>
-                  )}
-                </button>
-              );
-            })}
-          </div>
-        </div>
+                  if (
+                    !window.confirm(
+                      `Confirmas eliminar el producto \"${product.nombre}\"?`,
+                    )
+                  )
+                    return;
+                  deleteProductMutation.mutate(product);
+                }}
+                isCreating={createProductMutation.isPending}
+                isUpdating={updateProductMutation.isPending}
+                isDeleting={deleteProductMutation.isPending}
+                updatingId={updatingProductId}
+                deletingId={deletingProductId}
+              />
+            )}
+            {activeTab === "pedidos" && canAccessTab("pedidos") && (
+              <InternalOrderForm
+                productos={productosQuery.data}
+                pendingOrders={transfersQuery.data}
+                onSubmit={(payload) => createOrderMutation.mutate(payload)}
+                onCancelOrder={(pedido, motivo) => {
+                  if (!session) {
+                    showToast("Inicia sesion para cancelar pedidos.", "error");
+                    return;
+                  }
+                  cancelOrderMutation.mutate({ pedido, motivo });
+                }}
+                isSubmitting={createOrderMutation.isPending}
+                cancelingOrderId={cancelingOrderId}
+              />
+            )}
+            {activeTab === "despacho" && canAccessTab("despacho") && (
+              <DispatchPanel
+                pedidos={transfersQuery.data}
+                isLoading={transfersQuery.isLoading}
+                dispatchingId={dispatchingId}
+                receivingId={receivingId}
+                onDispatch={(pedido) => {
+                  if (!session) {
+                    showToast("Inicia sesion para despachar pedidos.", "error");
+                    return;
+                  }
+                  if (!window.confirm("Confirmas el despacho de este pedido?"))
+                    return;
+                  dispatchMutation.mutate(pedido);
+                }}
+                onReceive={(pedido) => {
+                  if (!session) {
+                    showToast("Inicia sesion para recibir pedidos.", "error");
+                    return;
+                  }
+                  if (!window.confirm("Confirmas la recepcion de este pedido?"))
+                    return;
+                  receiveMutation.mutate(pedido);
+                }}
+              />
+            )}
+            {activeTab === "ajustar" && canAccessTab("ajustar") && (
+              <StockAdjustTab
+                productos={productosQuery.data}
+                onAdjust={(params) => {
+                  if (!window.confirm("Confirmas el ajuste de stock?")) return;
+                  adjustMutation.mutate(params);
+                }}
+                isSubmitting={adjustMutation.isPending}
+              />
+            )}
+            {activeTab === "historial" && canAccessTab("historial") && (
+              <MovimientosTab
+                movimientos={movimientosQuery.data}
+                isLoading={movimientosQuery.isLoading}
+              />
+            )}
+            {activeTab === "usuarios" && canAccessTab("usuarios") && (
+              <UsersPermissionsTab
+                onSaved={() => showToast("Permisos actualizados.")}
+              />
+            )}
+            {activeTab === "importar" && canAccessTab("importar") && (
+              <CsvImport
+                onImported={() => {
+                  queryClient.invalidateQueries({ queryKey: ["productos"] });
+                  queryClient.invalidateQueries({ queryKey: ["stock-global"] });
+                  setActiveTab("stock");
+                }}
+              />
+            )}
 
-        {/* ── Tab content ── */}
-        {activeTab === "stock" && canAccessTab("stock") && (
-          <StockGlobalTable
-            rows={stockQuery.data}
-            isLoading={stockQuery.isLoading}
-          />
-        )}
-        {activeTab === "productos" && canAccessTab("productos") && (
-          <ProductsCrudTab
-            products={productosQuery.data}
-            isLoading={productosQuery.isLoading}
-            onCreate={(payload) => createProductMutation.mutate(payload)}
-            onUpdate={(payload) => updateProductMutation.mutate(payload)}
-            onDelete={(product) => {
-              if (!session) {
-                showToast("Inicia sesion para eliminar productos.", "error");
-                return;
-              }
-              if (
-                !window.confirm(
-                  `Confirmas eliminar el producto \"${product.nombre}\"?`,
-                )
-              )
-                return;
-              deleteProductMutation.mutate(product);
-            }}
-            isCreating={createProductMutation.isPending}
-            isUpdating={updateProductMutation.isPending}
-            isDeleting={deleteProductMutation.isPending}
-            updatingId={updatingProductId}
-            deletingId={deletingProductId}
-          />
-        )}
-        {activeTab === "pedidos" && canAccessTab("pedidos") && (
-          <InternalOrderForm
-            productos={productosQuery.data}
-            pendingOrders={transfersQuery.data}
-            onSubmit={(payload) => createOrderMutation.mutate(payload)}
-            onCancelOrder={(pedido, motivo) => {
-              if (!session) {
-                showToast("Inicia sesion para cancelar pedidos.", "error");
-                return;
-              }
-              cancelOrderMutation.mutate({ pedido, motivo });
-            }}
-            isSubmitting={createOrderMutation.isPending}
-            cancelingOrderId={cancelingOrderId}
-          />
-        )}
-        {activeTab === "despacho" && canAccessTab("despacho") && (
-          <DispatchPanel
-            pedidos={transfersQuery.data}
-            isLoading={transfersQuery.isLoading}
-            dispatchingId={dispatchingId}
-            receivingId={receivingId}
-            onDispatch={(pedido) => {
-              if (!session) {
-                showToast("Inicia sesion para despachar pedidos.", "error");
-                return;
-              }
-              if (!window.confirm("Confirmas el despacho de este pedido?"))
-                return;
-              dispatchMutation.mutate(pedido);
-            }}
-            onReceive={(pedido) => {
-              if (!session) {
-                showToast("Inicia sesion para recibir pedidos.", "error");
-                return;
-              }
-              if (!window.confirm("Confirmas la recepcion de este pedido?"))
-                return;
-              receiveMutation.mutate(pedido);
-            }}
-          />
-        )}
-        {activeTab === "ajustar" && canAccessTab("ajustar") && (
-          <StockAdjustTab
-            productos={productosQuery.data}
-            onAdjust={(params) => {
-              if (!window.confirm("Confirmas el ajuste de stock?")) return;
-              adjustMutation.mutate(params);
-            }}
-            isSubmitting={adjustMutation.isPending}
-          />
-        )}
-        {activeTab === "historial" && canAccessTab("historial") && (
-          <MovimientosTab
-            movimientos={movimientosQuery.data}
-            isLoading={movimientosQuery.isLoading}
-          />
-        )}
-        {activeTab === "importar" && canAccessTab("importar") && (
-          <CsvImport
-            onImported={() => {
-              queryClient.invalidateQueries({ queryKey: ["productos"] });
-              queryClient.invalidateQueries({ queryKey: ["stock-global"] });
-              setActiveTab("stock");
-            }}
-          />
-        )}
-
-        {activeTab && !canAccessTab(activeTab) && (
-          <div className="rounded-2xl border border-slate-800 bg-slate-900 p-6 text-sm text-slate-300">
-            {!session
-              ? "Iniciá sesión con usuario de sucursal o administrador para acceder a la app."
-              : "Tu usuario no tiene permisos para esta sección. Contactá al administrador."}
-          </div>
+            {activeTab && !canAccessTab(activeTab) && (
+              <div className="rounded-2xl border border-slate-800 bg-slate-900 p-6 text-sm text-slate-300">
+                Tu usuario no tiene permisos para esta sección. Contactá al
+                administrador.
+              </div>
+            )}
+          </>
         )}
       </div>
       <Toast toast={toast} />
