@@ -7,7 +7,6 @@ export default function AuthPanel({
   credentials,
   onCredentialsChange,
   onSignIn,
-  onSignUp,
   onResetPassword,
 }) {
   const hasEmail = useMemo(
@@ -40,7 +39,8 @@ export default function AuthPanel({
           <div>
             <p className="font-semibold text-slate-100">Iniciar sesión</p>
             <p className="text-xs text-slate-500">
-              Necesitás sesión para despachar, ajustar e importar.
+              Cada sucursal usa su usuario y clave. El admin accede a toda la
+              app.
             </p>
           </div>
         </div>
@@ -61,7 +61,7 @@ export default function AuthPanel({
             <div className="grid gap-3 md:grid-cols-2">
               <div className="space-y-1.5">
                 <label className="block text-xs font-semibold uppercase tracking-wider text-slate-500">
-                  Email
+                  Usuario (email)
                 </label>
                 <input
                   type="email"
@@ -112,14 +112,6 @@ export default function AuthPanel({
                 ) : (
                   "Ingresar"
                 )}
-              </button>
-              <button
-                type="button"
-                onClick={onSignUp}
-                disabled={authSubmitting}
-                className="rounded-xl border border-slate-700 bg-slate-800 px-5 py-2.5 text-sm font-semibold text-slate-200 transition hover:border-slate-600 hover:bg-slate-700 disabled:cursor-not-allowed disabled:opacity-60"
-              >
-                Crear cuenta
               </button>
               <button
                 type="button"

@@ -14,7 +14,7 @@ import { mapSupabaseError } from "./lib/errorMapper";
 import { supabase } from "./lib/supabaseClient";
 
 const TABS = [
-  { id: "stock", label: "Stock", icon: "stock" },
+  { id: "stock", label: "Stock", icon: "stock", requiresAuth: true },
   {
     id: "productos",
     label: "Productos",
@@ -32,6 +32,33 @@ const TABS = [
   },
   { id: "importar", label: "Importar", icon: "importar", requiresAuth: true },
 ];
+
+const ROLE_LABELS = {
+  administrador: "Admin",
+  sucursal: "Sucursal",
+  deposito: "Depósito",
+};
+
+const BRANCH_LABELS = {
+  sucursal_1: "CAPITAL",
+  sucursal_2: "RAWSON",
+  sucursal_3: "FALUCHO",
+  deposito_central: "Depósito Central",
+};
+
+const ROLE_ALLOWED_TABS = {
+  administrador: [
+    "stock",
+    "productos",
+    "pedidos",
+    "despacho",
+    "ajustar",
+    "historial",
+    "importar",
+  ],
+  sucursal: ["stock", "pedidos", "despacho", "ajustar"],
+  deposito: ["stock", "pedidos", "despacho", "ajustar"],
+};
 
 const TAB_ICONS = {
   stock: (
@@ -242,9 +269,24 @@ export default function App() {
   const [updatingProductId, setUpdatingProductId] = useState(null);
   const [deletingProductId, setDeletingProductId] = useState(null);
   const [session, setSession] = useState(null);
+  const [perfil, setPerfil] = useState(null);
+  const [perfilLoading, setPerfilLoading] = useState(false);
   const [authLoading, setAuthLoading] = useState(true);
   const [authSubmitting, setAuthSubmitting] = useState(false);
   const [credentials, setCredentials] = useState({ email: "", password: "" });
+
+  const userRole = perfil?.rol ?? null;
+  const allowedTabs = userRole
+    ? (ROLE_ALLOWED_TABS[userRole] ?? ["stock"])
+    : ["stock"];
+
+  const canAccessTab = (tabId) => {
+    const tab = TABS.find((t) => t.id === tabId);
+    if (!tab) return false;
+    if (!tab.requiresAuth) return true;
+    if (!session || !userRole) return false;
+    return allowedTabs.includes(tabId);
+  };
 
   const showToast = (message, type = "success") => {
     setToast({ message, type });
@@ -284,6 +326,48 @@ export default function App() {
     }
   }, [activeTab, session]);
 
+  useEffect(() => {
+    const loadPerfil = async () => {
+      if (!session?.user?.id) {
+        setPerfil(null);
+        return;
+      }
+
+      setPerfilLoading(true);
+      const { data, error } = await supabase
+        .from("perfiles")
+        .select("rol,sucursal_id,email")
+        .eq("id", session.user.id)
+        .maybeSingle();
+
+      setPerfilLoading(false);
+
+      if (error) {
+        showToast("No se pudo cargar el perfil de permisos.", "error");
+        return;
+      }
+
+      if (!data) {
+        setPerfil(null);
+        showToast(
+          "Tu usuario no tiene perfil asignado. Pedí al admin que te habilite.",
+          "error",
+        );
+        return;
+      }
+
+      setPerfil(data);
+    };
+
+    loadPerfil();
+  }, [session]);
+
+  useEffect(() => {
+    if (!canAccessTab(activeTab)) {
+      setActiveTab("stock");
+    }
+  }, [activeTab, session, userRole]);
+
   const handleSignIn = async () => {
     if (!credentials.email || !credentials.password) return;
 
@@ -300,29 +384,6 @@ export default function App() {
     }
 
     showToast("Sesión iniciada correctamente.");
-  };
-
-  const handleSignUp = async () => {
-    if (!credentials.email || !credentials.password) return;
-
-    setAuthSubmitting(true);
-    const { error } = await supabase.auth.signUp({
-      email: credentials.email,
-      password: credentials.password,
-    });
-    setAuthSubmitting(false);
-
-    if (error) {
-      showToast(
-        mapSupabaseError(error, "No se pudo crear la cuenta."),
-        "error",
-      );
-      return;
-    }
-
-    showToast(
-      "Cuenta creada. Revisá tu correo para confirmar si tu proyecto lo requiere.",
-    );
   };
 
   const handleResetPassword = async () => {
@@ -442,6 +503,10 @@ export default function App() {
 
   const createProductMutation = useMutation({
     mutationFn: async (payload) => {
+      if (userRole !== "administrador") {
+        throw new Error("Solo administrador puede crear productos.");
+      }
+
       // Validate duplicate codigo_barras
       if (payload.codigo_barras && payload.codigo_barras.trim()) {
         const existingProduct = (productosQuery.data ?? []).find(
@@ -470,6 +535,10 @@ export default function App() {
 
   const updateProductMutation = useMutation({
     mutationFn: async ({ id, ...payload }) => {
+      if (userRole !== "administrador") {
+        throw new Error("Solo administrador puede editar productos.");
+      }
+
       setUpdatingProductId(id);
       const { error } = await supabase
         .from("productos")
@@ -494,6 +563,10 @@ export default function App() {
 
   const deleteProductMutation = useMutation({
     mutationFn: async (product) => {
+      if (userRole !== "administrador") {
+        throw new Error("Solo administrador puede eliminar productos.");
+      }
+
       setDeletingProductId(product.id);
       const { error } = await supabase
         .from("productos")
@@ -649,6 +722,14 @@ export default function App() {
                 <span className="max-w-[150px] truncate text-xs text-slate-300">
                   {session.user.email}
                 </span>
+                <span className="rounded-md border border-slate-700 bg-slate-800 px-1.5 py-0.5 text-[10px] font-semibold text-slate-300">
+                  {perfilLoading
+                    ? "Cargando..."
+                    : (ROLE_LABELS[userRole] ?? "Sin rol")}
+                  {perfil?.sucursal_id
+                    ? ` · ${BRANCH_LABELS[perfil.sucursal_id] ?? perfil.sucursal_id}`
+                    : ""}
+                </span>
                 <button
                   onClick={handleSignOut}
                   disabled={authSubmitting}
@@ -731,9 +812,7 @@ export default function App() {
             credentials={credentials}
             onCredentialsChange={setCredentials}
             onSignIn={handleSignIn}
-            onSignUp={handleSignUp}
             onResetPassword={handleResetPassword}
-            onSignOut={handleSignOut}
           />
         )}
 
@@ -741,14 +820,38 @@ export default function App() {
         <div className="mb-6 overflow-x-auto pb-0.5">
           <div className="flex min-w-max gap-0.5 rounded-xl border border-slate-800 bg-slate-900/60 p-1.5">
             {TABS.map((tab) => {
-              const isLocked = Boolean(tab.requiresAuth && !session);
+              const isLocked = !canAccessTab(tab.id);
               const isActive = activeTab === tab.id;
               return (
                 <button
                   key={tab.id}
-                  onClick={() => setActiveTab(tab.id)}
+                  onClick={() => {
+                    if (canAccessTab(tab.id)) {
+                      setActiveTab(tab.id);
+                      return;
+                    }
+
+                    if (!session) {
+                      showToast(
+                        "Iniciá sesión para acceder a esta sección.",
+                        "error",
+                      );
+                      return;
+                    }
+
+                    showToast(
+                      "Tu rol no tiene acceso a esta sección.",
+                      "error",
+                    );
+                  }}
                   disabled={isLocked}
-                  title={isLocked ? "Requiere sesión iniciada" : undefined}
+                  title={
+                    !session && tab.requiresAuth
+                      ? "Requiere sesión iniciada"
+                      : isLocked
+                        ? "No tenés permisos para esta sección"
+                        : undefined
+                  }
                   className={`relative flex items-center gap-2 rounded-lg px-4 py-2.5 text-sm font-medium transition-all duration-150 ${
                     isActive
                       ? "bg-slate-700 text-white shadow-md"
@@ -786,13 +889,13 @@ export default function App() {
         </div>
 
         {/* ── Tab content ── */}
-        {activeTab === "stock" && (
+        {activeTab === "stock" && canAccessTab("stock") && (
           <StockGlobalTable
             rows={stockQuery.data}
             isLoading={stockQuery.isLoading}
           />
         )}
-        {activeTab === "productos" && (
+        {activeTab === "productos" && canAccessTab("productos") && (
           <ProductsCrudTab
             products={productosQuery.data}
             isLoading={productosQuery.isLoading}
@@ -818,7 +921,7 @@ export default function App() {
             deletingId={deletingProductId}
           />
         )}
-        {activeTab === "pedidos" && (
+        {activeTab === "pedidos" && canAccessTab("pedidos") && (
           <InternalOrderForm
             productos={productosQuery.data}
             pendingOrders={transfersQuery.data}
@@ -834,7 +937,7 @@ export default function App() {
             cancelingOrderId={cancelingOrderId}
           />
         )}
-        {activeTab === "despacho" && (
+        {activeTab === "despacho" && canAccessTab("despacho") && (
           <DispatchPanel
             pedidos={transfersQuery.data}
             isLoading={transfersQuery.isLoading}
@@ -860,7 +963,7 @@ export default function App() {
             }}
           />
         )}
-        {activeTab === "ajustar" && (
+        {activeTab === "ajustar" && canAccessTab("ajustar") && (
           <StockAdjustTab
             productos={productosQuery.data}
             onAdjust={(params) => {
@@ -870,13 +973,13 @@ export default function App() {
             isSubmitting={adjustMutation.isPending}
           />
         )}
-        {activeTab === "historial" && (
+        {activeTab === "historial" && canAccessTab("historial") && (
           <MovimientosTab
             movimientos={movimientosQuery.data}
             isLoading={movimientosQuery.isLoading}
           />
         )}
-        {activeTab === "importar" && (
+        {activeTab === "importar" && canAccessTab("importar") && (
           <CsvImport
             onImported={() => {
               queryClient.invalidateQueries({ queryKey: ["productos"] });
@@ -884,6 +987,14 @@ export default function App() {
               setActiveTab("stock");
             }}
           />
+        )}
+
+        {activeTab && !canAccessTab(activeTab) && (
+          <div className="rounded-2xl border border-slate-800 bg-slate-900 p-6 text-sm text-slate-300">
+            {!session
+              ? "Iniciá sesión con usuario de sucursal o administrador para acceder a la app."
+              : "Tu usuario no tiene permisos para esta sección. Contactá al administrador."}
+          </div>
         )}
       </div>
       <Toast toast={toast} />
