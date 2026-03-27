@@ -336,10 +336,15 @@ export default function App() {
 
   const currentEmail = session?.user?.email?.toLowerCase() ?? null;
   const isAdminUser = currentEmail === ADMIN_EMAIL;
+  const profileRole = ["administrador", "sucursal", "deposito"].includes(
+    perfil?.rol,
+  )
+    ? perfil.rol
+    : null;
   const effectiveRole = session
     ? isAdminUser
       ? "administrador"
-      : "sucursal"
+      : (profileRole ?? "sucursal")
     : null;
   const userRole = effectiveRole;
   const allowedTabs = effectiveRole
