@@ -712,23 +712,15 @@ export default function App() {
       <header className="sticky top-0 z-20 border-b border-slate-800/60 bg-slate-950/95 backdrop-blur-md">
         <div className="mx-auto flex max-w-6xl items-center gap-3 px-4 py-3">
           <div className="flex items-center gap-3">
-            <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-gradient-to-br from-sky-500 to-indigo-600 shadow-lg shadow-sky-500/20">
-              <svg
-                className="h-5 w-5 text-white"
-                viewBox="0 0 20 20"
-                fill="currentColor"
-              >
-                <path
-                  fillRule="evenodd"
-                  d="M4 2a2 2 0 00-2 2v11a3 3 0 106 0V4a2 2 0 00-2-2H4zm1 14a1 1 0 100-2 1 1 0 000 2zm5-1.757l4.9-4.9a2 2 0 000-2.828L13.485 5.1a2 2 0 00-2.828 0L10 5.757v8.486zM16 18H9.071l6-6H16a2 2 0 012 2v2a2 2 0 01-2 2z"
-                  clipRule="evenodd"
-                />
-              </svg>
-            </div>
+            <img
+              src="/logo.jpg"
+              alt="Robles Pinturerias"
+              className="h-10 w-10 shrink-0 rounded-xl object-cover shadow-lg shadow-orange-500/20"
+            />
             <div className="leading-none">
-              <p className="text-sm font-bold text-slate-100">Pinturería</p>
-              <p className="mt-0.5 text-[11px] text-slate-500">
-                Control de stock
+              <p className="text-sm font-bold text-slate-100">Robles</p>
+              <p className="mt-0.5 text-[11px] text-slate-400">
+                Pinturerias · Control de stock
               </p>
             </div>
           </div>
@@ -774,15 +766,41 @@ export default function App() {
 
       <div className="mx-auto max-w-6xl px-4 py-8">
         {!session ? (
-          <AuthPanel
-            session={session}
-            authLoading={authLoading}
-            authSubmitting={authSubmitting}
-            credentials={credentials}
-            onCredentialsChange={setCredentials}
-            onSignIn={handleSignIn}
-            onResetPassword={handleResetPassword}
-          />
+          <div className="space-y-6">
+            <div className="relative overflow-hidden rounded-2xl border border-slate-700/60 bg-gradient-to-br from-[#4a5058] via-[#3f454d] to-[#353a41] p-6 shadow-xl shadow-black/30">
+              <div className="pointer-events-none absolute -right-16 -top-16 h-48 w-48 rounded-full bg-orange-500/20 blur-3xl" />
+              <div className="pointer-events-none absolute -left-20 -bottom-20 h-56 w-56 rounded-full bg-amber-400/15 blur-3xl" />
+              <div className="relative flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
+                <div>
+                  <p className="text-xs font-semibold uppercase tracking-[0.2em] text-orange-300">
+                    Bienvenido
+                  </p>
+                  <h1 className="mt-1 text-2xl font-black text-white md:text-3xl">
+                    Sistema de Stock Robles
+                  </h1>
+                  <p className="mt-2 max-w-2xl text-sm text-slate-200/90">
+                    Iniciá sesión para acceder a productos, pedidos, despacho y
+                    ajustes según tus permisos.
+                  </p>
+                </div>
+                <img
+                  src="/logo.jpg"
+                  alt="Robles Pinturerias"
+                  className="h-24 w-24 rounded-2xl border border-white/10 object-cover shadow-lg shadow-orange-900/40 md:h-28 md:w-28"
+                />
+              </div>
+            </div>
+
+            <AuthPanel
+              session={session}
+              authLoading={authLoading}
+              authSubmitting={authSubmitting}
+              credentials={credentials}
+              onCredentialsChange={setCredentials}
+              onSignIn={handleSignIn}
+              onResetPassword={handleResetPassword}
+            />
+          </div>
         ) : (
           <>
             {/* ── Stats ── */}
