@@ -13,6 +13,7 @@ export default function StockAdjustTab({ productos, onAdjust, isSubmitting }) {
   const [ubicacion, setUbicacion] = useState("sucursal_1");
   const [cantidad, setCantidad] = useState("");
   const [motivo, setMotivo] = useState("");
+  const [submitted, setSubmitted] = useState(false);
 
   const canSubmit =
     productoId &&
@@ -23,6 +24,7 @@ export default function StockAdjustTab({ productos, onAdjust, isSubmitting }) {
 
   const handleSubmit = (e) => {
     e.preventDefault();
+    setSubmitted(true);
     if (!canSubmit) return;
     onAdjust({
       p_producto_id: Number(productoId),
@@ -32,7 +34,12 @@ export default function StockAdjustTab({ productos, onAdjust, isSubmitting }) {
     });
     setCantidad("");
     setMotivo("");
+    setSubmitted(false);
   };
+
+  const errProducto = submitted && !productoId;
+  const errCantidad = submitted && (cantidad === "" || Number(cantidad) < 0);
+  const errMotivo = submitted && motivo.trim().length < 3;
 
   return (
     <div className="overflow-hidden rounded-2xl border border-slate-800 bg-slate-900 shadow-sm">
@@ -53,9 +60,16 @@ export default function StockAdjustTab({ productos, onAdjust, isSubmitting }) {
             </label>
             <select
               value={productoId}
-              onChange={(e) => setProductoId(e.target.value)}
+              onChange={(e) => {
+                setProductoId(e.target.value);
+                setSubmitted(false);
+              }}
               required
-              className="w-full rounded-lg border border-slate-700 bg-slate-950 px-3 py-2 text-sm text-slate-100 focus:border-sky-500 focus:outline-none"
+              className={`w-full rounded-lg border bg-slate-950 px-3 py-2 text-sm text-slate-100 focus:outline-none ${
+                errProducto
+                  ? "border-rose-500 focus:border-rose-400"
+                  : "border-slate-700 focus:border-sky-500"
+              }`}
             >
               <option value="">Seleccionar producto...</option>
               {(productos ?? []).map((p) => (
@@ -64,6 +78,11 @@ export default function StockAdjustTab({ productos, onAdjust, isSubmitting }) {
                 </option>
               ))}
             </select>
+            {errProducto && (
+              <p className="mt-1 text-xs text-rose-400">
+                Seleccioná un producto.
+              </p>
+            )}
           </div>
 
           {/* Ubicación */}
@@ -96,8 +115,17 @@ export default function StockAdjustTab({ productos, onAdjust, isSubmitting }) {
               onChange={(e) => setCantidad(e.target.value)}
               placeholder="0"
               required
-              className="w-full rounded-lg border border-slate-700 bg-slate-950 px-3 py-2 text-sm text-slate-100 placeholder-slate-600 focus:border-sky-500 focus:outline-none"
+              className={`w-full rounded-lg border bg-slate-950 px-3 py-2 text-sm text-slate-100 placeholder-slate-600 focus:outline-none ${
+                errCantidad
+                  ? "border-rose-500 focus:border-rose-400"
+                  : "border-slate-700 focus:border-sky-500"
+              }`}
             />
+            {errCantidad && (
+              <p className="mt-1 text-xs text-rose-400">
+                Ingresá una cantidad válida (mínimo 0).
+              </p>
+            )}
           </div>
 
           {/* Motivo */}
@@ -114,8 +142,17 @@ export default function StockAdjustTab({ productos, onAdjust, isSubmitting }) {
               onChange={(e) => setMotivo(e.target.value)}
               placeholder="Ej: Conteo físico, merma, error carga..."
               required
-              className="w-full rounded-lg border border-slate-700 bg-slate-950 px-3 py-2 text-sm text-slate-100 placeholder-slate-600 focus:border-sky-500 focus:outline-none"
+              className={`w-full rounded-lg border bg-slate-950 px-3 py-2 text-sm text-slate-100 placeholder-slate-600 focus:outline-none ${
+                errMotivo
+                  ? "border-rose-500 focus:border-rose-400"
+                  : "border-slate-700 focus:border-sky-500"
+              }`}
             />
+            {errMotivo && (
+              <p className="mt-1 text-xs text-rose-400">
+                El motivo debe tener al menos 3 caracteres.
+              </p>
+            )}
           </div>
         </div>
 
@@ -144,12 +181,6 @@ export default function StockAdjustTab({ productos, onAdjust, isSubmitting }) {
               "Aplicar ajuste"
             )}
           </button>
-
-          {motivo.trim().length > 0 && motivo.trim().length < 3 && (
-            <p className="text-xs text-amber-400">
-              El motivo debe tener al menos 3 caracteres
-            </p>
-          )}
         </div>
       </form>
     </div>

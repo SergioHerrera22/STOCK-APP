@@ -37,7 +37,10 @@ export default function DispatchPanel({
   onReceive,
   dispatchingId,
   receivingId,
+  userRole,
 }) {
+  const canDispatch = userRole === "deposito" || userRole === "administrador";
+  const canReceive = userRole === "sucursal" || userRole === "administrador";
   const pending = pedidos.filter((p) => p.estado === "pendiente");
   const inTransit = pedidos.filter((p) => p.estado === "en_transito");
 
@@ -45,6 +48,7 @@ export default function DispatchPanel({
     const s = STATUS[pedido.estado] ?? STATUS.pendiente;
     const isActing = dispatchingId === pedido.id || receivingId === pedido.id;
     const isPending = pedido.estado === "pendiente";
+    const showAction = isPending ? canDispatch : canReceive;
 
     return (
       <div
@@ -100,38 +104,48 @@ export default function DispatchPanel({
         </div>
 
         {/* Action button */}
-        <button
-          onClick={() => (isPending ? onDispatch(pedido) : onReceive(pedido))}
-          disabled={isActing}
-          className={`shrink-0 flex items-center gap-2 rounded-xl px-5 py-2.5 text-sm font-semibold text-white transition disabled:opacity-60 ${
-            isPending
-              ? "bg-gradient-to-r from-amber-600 to-orange-600 hover:from-amber-500 hover:to-orange-500 shadow-lg shadow-amber-500/20"
-              : "bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 shadow-lg shadow-emerald-500/20"
-          }`}
-        >
-          {isActing ? (
-            <span className="h-4 w-4 animate-spin rounded-full border-2 border-white/30 border-t-white" />
-          ) : isPending ? (
-            <>
-              <svg className="h-4 w-4" viewBox="0 0 20 20" fill="currentColor">
-                <path d="M8 16.5a1.5 1.5 0 11-3 0 1.5 1.5 0 013 0zM15 16.5a1.5 1.5 0 11-3 0 1.5 1.5 0 013 0z" />
-                <path d="M3 4a1 1 0 00-1 1v10a1 1 0 001 1h1.05a2.5 2.5 0 014.9 0H11a1 1 0 001-1v-5h2.038A2 2 0 0116 11.446V15h-.05a2.5 2.5 0 01-4.9 0H9a2 2 0 01-2-2V5a1 1 0 00-1-1H3z" />
-              </svg>
-              Despachar
-            </>
-          ) : (
-            <>
-              <svg className="h-4 w-4" viewBox="0 0 20 20" fill="currentColor">
-                <path
-                  fillRule="evenodd"
-                  d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z"
-                  clipRule="evenodd"
-                />
-              </svg>
-              Marcar recibido
-            </>
-          )}
-        </button>
+        {showAction && (
+          <button
+            onClick={() => (isPending ? onDispatch(pedido) : onReceive(pedido))}
+            disabled={isActing}
+            className={`shrink-0 flex items-center gap-2 rounded-xl px-5 py-2.5 text-sm font-semibold text-white transition disabled:opacity-60 ${
+              isPending
+                ? "bg-gradient-to-r from-amber-600 to-orange-600 hover:from-amber-500 hover:to-orange-500 shadow-lg shadow-amber-500/20"
+                : "bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 shadow-lg shadow-emerald-500/20"
+            }`}
+          >
+            {isActing ? (
+              <span className="h-4 w-4 animate-spin rounded-full border-2 border-white/30 border-t-white" />
+            ) : isPending ? (
+              <>
+                <svg
+                  className="h-4 w-4"
+                  viewBox="0 0 20 20"
+                  fill="currentColor"
+                >
+                  <path d="M8 16.5a1.5 1.5 0 11-3 0 1.5 1.5 0 013 0zM15 16.5a1.5 1.5 0 11-3 0 1.5 1.5 0 013 0z" />
+                  <path d="M3 4a1 1 0 00-1 1v10a1 1 0 001 1h1.05a2.5 2.5 0 014.9 0H11a1 1 0 001-1v-5h2.038A2 2 0 0116 11.446V15h-.05a2.5 2.5 0 01-4.9 0H9a2 2 0 01-2-2V5a1 1 0 00-1-1H3z" />
+                </svg>
+                Despachar
+              </>
+            ) : (
+              <>
+                <svg
+                  className="h-4 w-4"
+                  viewBox="0 0 20 20"
+                  fill="currentColor"
+                >
+                  <path
+                    fillRule="evenodd"
+                    d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z"
+                    clipRule="evenodd"
+                  />
+                </svg>
+                Marcar recibido
+              </>
+            )}
+          </button>
+        )}
       </div>
     );
   };

@@ -44,13 +44,19 @@ export default function InternalOrderForm({
     );
   }, [productos, search]);
 
+  const [submitted, setSubmitted] = useState(false);
+
   const selectedProducto = useMemo(() => {
     if (!productoId) return null;
     return productos.find((p) => Number(p.id) === Number(productoId)) ?? null;
   }, [productos, productoId]);
 
+  const errorProducto = submitted && !productoId;
+  const errorCantidad = submitted && cantidad <= 0;
+
   const handleSubmit = (event) => {
     event.preventDefault();
+    setSubmitted(true);
     if (!productoId || cantidad <= 0) return;
 
     onSubmit({
@@ -62,6 +68,7 @@ export default function InternalOrderForm({
     });
 
     setCantidad(1);
+    setSubmitted(false);
   };
 
   const currentDestino = DESTINOS.find((d) => d.value === destino);
@@ -137,8 +144,15 @@ export default function InternalOrderForm({
             </div>
             <select
               value={productoId}
-              onChange={(e) => setProductoId(e.target.value)}
-              className="w-full rounded-lg border border-slate-700 bg-slate-950 px-3 py-2.5 text-sm text-slate-100 transition focus:border-sky-600 focus:outline-none"
+              onChange={(e) => {
+                setProductoId(e.target.value);
+                setSubmitted(false);
+              }}
+              className={`w-full rounded-lg border bg-slate-950 px-3 py-2.5 text-sm text-slate-100 transition focus:outline-none ${
+                errorProducto
+                  ? "border-rose-500 focus:border-rose-400"
+                  : "border-slate-700 focus:border-sky-600"
+              }`}
               required
             >
               <option value="">
@@ -155,6 +169,11 @@ export default function InternalOrderForm({
               ))}
             </select>
 
+            {errorProducto && (
+              <p className="mt-1 text-xs text-rose-400">
+                Seleccioná un producto.
+              </p>
+            )}
             {selectedProducto && (
               <div className="mt-2 flex flex-wrap gap-2">
                 <span className="inline-flex items-center rounded-full border border-slate-700 bg-slate-950 px-2.5 py-1 text-xs font-medium text-slate-300">
@@ -196,9 +215,18 @@ export default function InternalOrderForm({
               min={1}
               value={cantidad}
               onChange={(e) => setCantidad(e.target.value)}
-              className="w-full rounded-lg border border-slate-700 bg-slate-950 px-3 py-2.5 text-sm text-slate-100 transition focus:border-sky-600 focus:outline-none"
+              className={`w-full rounded-lg border bg-slate-950 px-3 py-2.5 text-sm text-slate-100 transition focus:outline-none ${
+                errorCantidad
+                  ? "border-rose-500 focus:border-rose-400"
+                  : "border-slate-700 focus:border-sky-600"
+              }`}
               required
             />
+            {errorCantidad && (
+              <p className="mt-1 text-xs text-rose-400">
+                La cantidad debe ser mayor a 0.
+              </p>
+            )}
           </div>
         </div>
 

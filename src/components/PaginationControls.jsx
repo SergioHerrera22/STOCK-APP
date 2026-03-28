@@ -21,7 +21,31 @@ export default function PaginationControls({
     <div className="flex flex-col gap-2 border-t border-slate-800 px-4 py-3 md:flex-row md:items-center md:justify-between">
       <p className="text-xs text-slate-500">{label}</p>
 
-      <div className="flex items-center gap-1">
+      {/* Vista móvil: solo Anterior / página actual / Siguiente */}
+      <div className="flex items-center justify-between gap-2 md:hidden">
+        <button
+          type="button"
+          onClick={() => canPrev && onPageChange(currentPage - 1)}
+          disabled={!canPrev}
+          className="min-h-[44px] flex-1 rounded-lg border border-slate-700 px-4 text-sm font-medium text-slate-300 transition active:bg-slate-800 disabled:cursor-not-allowed disabled:opacity-40"
+        >
+          ← Anterior
+        </button>
+        <span className="shrink-0 text-xs text-slate-500">
+          {currentPage} / {totalPages}
+        </span>
+        <button
+          type="button"
+          onClick={() => canNext && onPageChange(currentPage + 1)}
+          disabled={!canNext}
+          className="min-h-[44px] flex-1 rounded-lg border border-slate-700 px-4 text-sm font-medium text-slate-300 transition active:bg-slate-800 disabled:cursor-not-allowed disabled:opacity-40"
+        >
+          Siguiente →
+        </button>
+      </div>
+
+      {/* Vista desktop: navegación completa con números */}
+      <div className="hidden items-center gap-1 md:flex">
         <button
           type="button"
           onClick={() => canPrev && onPageChange(currentPage - 1)}

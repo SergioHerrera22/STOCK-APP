@@ -6,7 +6,7 @@ const TIPO_STYLES = {
 
 import ExportButton from "./ExportButton";
 import PaginationControls from "./PaginationControls";
-import { useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 
 const TIPO_LABELS = {
   despacho: "Despacho",
@@ -37,8 +37,31 @@ export default function MovimientosTab({
   isLoading,
   onGoToDespacho,
 }) {
+  const LS_KEY = "robles.historial.filters";
+
+  const [filters, setFilters] = useState(() => {
+    try {
+      const saved = localStorage.getItem(LS_KEY);
+      if (saved) return JSON.parse(saved);
+    } catch {}
+    return { tipo: "", ubicacion: "", fechaDesde: "", fechaHasta: "" };
+  });
   const [page, setPage] = useState(1);
   const pageSize = 20;
+
+  // Persist filters
+  useEffect(() => {
+    localStorage.setItem(LS_KEY, JSON.stringify(filters));
+    setPage(1);
+  }, [filters]);
+
+  const setFilter = (key, value) =>
+    setFilters((prev) => ({ ...prev, [key]: value }));
+
+  const clearFilters = () =>
+    setFilters({ tipo: "", ubicacion: "", fechaDesde: "", fechaHasta: "" });
+
+  const hasFilters = Object.values(filters).some(Boolean);
 
   if (isLoading) {
     return (
@@ -48,7 +71,30 @@ export default function MovimientosTab({
     );
   }
 
-  const rows = movimientos ?? [];
+  const allRows = movimientos ?? [];
+
+  const rows = useMemo(() => {
+    return allRows.filter((mov) => {
+      if (filters.tipo && mov.tipo !== filters.tipo) return false;
+      if (
+        filters.ubicacion &&
+        mov.origen !== filters.ubicacion &&
+        mov.destino !== filters.ubicacion
+      )
+        return false;
+      if (filters.fechaDesde) {
+        const from = new Date(filters.fechaDesde);
+        if (new Date(mov.creado_at) < from) return false;
+      }
+      if (filters.fechaHasta) {
+        const to = new Date(filters.fechaHasta);
+        to.setHours(23, 59, 59, 999);
+        if (new Date(mov.creado_at) > to) return false;
+      }
+      return true;
+    });
+  }, [allRows, filters]);
+
   const totalPages = Math.max(1, Math.ceil(rows.length / pageSize));
   const safePage = Math.min(page, totalPages);
   const startIndex = (safePage - 1) * pageSize;
@@ -64,8 +110,9 @@ export default function MovimientosTab({
               Historial de movimientos
             </h2>
             <p className="mt-0.5 text-xs text-slate-500">
-              Registro de despachos, recepciones y ajustes manuales. Últimos{" "}
-              {rows.length} movimientos.
+              {hasFilters
+                ? `${rows.length} de ${allRows.length} movimientos (filtrado)`
+                : `Últimos ${allRows.length} movimientos`}
             </p>
           </div>
           <ExportButton
@@ -74,9 +121,63 @@ export default function MovimientosTab({
             fileName="historial_movimientos"
           />
         </div>
+
+        {/* Filtros */}
+        <div className="mt-3 grid grid-cols-2 gap-2 md:grid-cols-4">
+          <select
+            value={filters.tipo}
+            onChange={(e) => setFilter("tipo", e.target.value)}
+            className="col-span-1 rounded-lg border border-slate-700 bg-slate-950 px-2.5 py-2 text-xs text-slate-300 outline-none transition focus:border-sky-500"
+          >
+            <option value="">Todos los tipos</option>
+            <option value="despacho">Despacho</option>
+            <option value="recepcion">Recepción</option>
+            <option value="ajuste_manual">Ajuste manual</option>
+          </select>
+
+          <select
+            value={filters.ubicacion}
+            onChange={(e) => setFilter("ubicacion", e.target.value)}
+            className="col-span-1 rounded-lg border border-slate-700 bg-slate-950 px-2.5 py-2 text-xs text-slate-300 outline-none transition focus:border-sky-500"
+          >
+            <option value="">Todas las ubicaciones</option>
+            <option value="deposito_central">Depósito</option>
+            <option value="sucursal_1">CAPITAL</option>
+            <option value="sucursal_2">RAWSON</option>
+            <option value="sucursal_3">FALUCHO</option>
+          </select>
+
+          <input
+            type="date"
+            value={filters.fechaDesde}
+            onChange={(e) => setFilter("fechaDesde", e.target.value)}
+            title="Desde"
+            className="col-span-1 rounded-lg border border-slate-700 bg-slate-950 px-2.5 py-2 text-xs text-slate-300 outline-none transition focus:border-sky-500"
+          />
+
+          <div className="col-span-1 flex gap-2">
+            <input
+              type="date"
+              value={filters.fechaHasta}
+              onChange={(e) => setFilter("fechaHasta", e.target.value)}
+              title="Hasta"
+              className="flex-1 rounded-lg border border-slate-700 bg-slate-950 px-2.5 py-2 text-xs text-slate-300 outline-none transition focus:border-sky-500"
+            />
+            {hasFilters && (
+              <button
+                type="button"
+                onClick={clearFilters}
+                title="Limpiar filtros"
+                className="rounded-lg border border-slate-700 px-2.5 py-2 text-xs text-slate-400 transition hover:border-rose-500/60 hover:text-rose-300"
+              >
+                ✕
+              </button>
+            )}
+          </div>
+        </div>
       </div>
 
-      {rows.length === 0 ? (
+      {allRows.length === 0 ? (
         <div className="flex flex-col items-center justify-center gap-2 py-16 text-slate-600">
           <span className="text-3xl">📋</span>
           <p className="text-sm">Todavía no hay movimientos registrados.</p>
@@ -92,6 +193,18 @@ export default function MovimientosTab({
               Ir a Despacho
             </button>
           )}
+        </div>
+      ) : rows.length === 0 && allRows.length > 0 ? (
+        <div className="flex flex-col items-center justify-center gap-2 py-16 text-slate-600">
+          <span className="text-3xl">🔍</span>
+          <p className="text-sm">Sin resultados para los filtros aplicados.</p>
+          <button
+            type="button"
+            onClick={clearFilters}
+            className="mt-2 rounded-lg border border-slate-700 px-3 py-1.5 text-xs font-semibold text-slate-300 transition hover:border-orange-400/60 hover:text-orange-300"
+          >
+            Limpiar filtros
+          </button>
         </div>
       ) : (
         <>

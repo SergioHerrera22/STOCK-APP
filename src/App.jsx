@@ -826,6 +826,8 @@ export default function App() {
     },
   ].filter((item) => item.show);
 
+  const visibleTabs = TABS.filter((tab) => canAccessTab(tab.id));
+
   return (
     <div className="min-h-screen bg-slate-950 text-slate-100">
       {/* ── Header ── */}
@@ -997,7 +999,7 @@ export default function App() {
               />
             </div>
 
-            <StockAlertBanner stock={stockQuery.data} threshold={10} />
+            <StockAlertBanner stock={stockQuery.data} />
 
             {showOnboarding && (
               <div className="mb-6 rounded-xl border border-orange-400/30 bg-orange-500/10 p-4">
@@ -1039,54 +1041,20 @@ export default function App() {
             {/* ── Tabs ── */}
             <div className="mb-6 overflow-x-auto pb-0.5">
               <div className="grid min-w-[320px] grid-cols-2 gap-1 rounded-xl border border-slate-800 bg-slate-900/60 p-1.5 sm:flex sm:min-w-max sm:gap-0.5">
-                {TABS.map((tab) => {
-                  const isLocked = !canAccessTab(tab.id);
+                {visibleTabs.map((tab) => {
                   const isActive = activeTab === tab.id;
                   return (
                     <button
                       key={tab.id}
-                      onClick={() => {
-                        if (canAccessTab(tab.id)) {
-                          setActiveTab(tab.id);
-                          return;
-                        }
-
-                        showToast(
-                          "Tu rol no tiene acceso a esta sección.",
-                          "error",
-                        );
-                      }}
-                      disabled={isLocked}
-                      title={
-                        isLocked
-                          ? "No tenés permisos para esta sección"
-                          : undefined
-                      }
+                      onClick={() => setActiveTab(tab.id)}
                       className={`relative flex items-center justify-center gap-2 rounded-lg px-3 py-2.5 text-sm font-medium transition-all duration-150 sm:justify-start sm:px-4 ${
                         isActive
                           ? "bg-slate-700 text-white shadow-md"
-                          : isLocked
-                            ? "cursor-not-allowed text-slate-700"
-                            : "text-slate-400 hover:bg-slate-800/70 hover:text-slate-200"
+                          : "text-slate-400 hover:bg-slate-800/70 hover:text-slate-200"
                       }`}
                     >
-                      <span className={isLocked ? "opacity-40" : ""}>
-                        {TAB_ICONS[tab.icon]}
-                      </span>
+                      <span>{TAB_ICONS[tab.icon]}</span>
                       <span>{tab.label}</span>
-                      {isLocked && (
-                        <svg
-                          className="h-3 w-3 shrink-0 opacity-40"
-                          viewBox="0 0 16 16"
-                          fill="currentColor"
-                        >
-                          <path
-                            fillRule="evenodd"
-                            d="M8 1a3.5 3.5 0 00-3.5 3.5V6H3a1 1 0 00-1 1v7a1 1 0 001 1h10a1 1 0 001-1V7a1 1 0 00-1-1h-1.5V4.5A3.5 3.5 0 008 1zm2 5V4.5a2 2 0 10-4 0V6h4z"
-                            clipRule="evenodd"
-                          />
-                        </svg>
-                      )}
                       {tab.id === "despacho" && pendingCount > 0 && (
                         <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-amber-500 text-[10px] font-black text-slate-900">
                           {pendingCount}
@@ -1134,6 +1102,7 @@ export default function App() {
               <ProductsCrudTab
                 products={productosQuery.data}
                 isLoading={productosQuery.isLoading}
+                userRole={effectiveRole}
                 onCreate={(payload) => createProductMutation.mutate(payload)}
                 onUpdate={(payload) => updateProductMutation.mutate(payload)}
                 onDelete={(product) => {
@@ -1179,6 +1148,7 @@ export default function App() {
               <DispatchPanel
                 pedidos={visibleTransfers}
                 isLoading={transfersQuery.isLoading}
+                userRole={effectiveRole}
                 dispatchingId={dispatchingId}
                 receivingId={receivingId}
                 onDispatch={(pedido) => {
@@ -1231,13 +1201,6 @@ export default function App() {
                   setActiveTab("stock");
                 }}
               />
-            )}
-
-            {activeTab && !canAccessTab(activeTab) && (
-              <div className="rounded-2xl border border-slate-800 bg-slate-900 p-6 text-sm text-slate-300">
-                Tu usuario no tiene permisos para esta sección. Contactá al
-                administrador.
-              </div>
             )}
           </>
         )}

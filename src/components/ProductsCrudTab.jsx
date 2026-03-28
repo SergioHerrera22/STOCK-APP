@@ -11,11 +11,28 @@ const EMPTY_FORM = {
 };
 
 function ProductForm({ title, form, setForm, onSubmit, submitLabel, loading }) {
+  const [submitted, setSubmitted] = useState(false);
+
   const canSubmit =
     form.nombre.trim() &&
     form.marca.trim() &&
     form.categoria.trim() &&
     form.tamaño.trim();
+
+  const err = (field) => submitted && !form[field]?.trim();
+  const fieldClass = (field) =>
+    `w-full rounded-xl border bg-slate-950 px-3 py-2.5 text-slate-100 outline-none transition ${
+      err(field)
+        ? "border-rose-500 focus:border-rose-400"
+        : "border-slate-700 focus:border-sky-500"
+    }`;
+
+  const handleClick = () => {
+    setSubmitted(true);
+    if (!canSubmit) return;
+    onSubmit();
+    setSubmitted(false);
+  };
 
   return (
     <div className="rounded-2xl border border-slate-800 bg-slate-900 p-5">
@@ -29,8 +46,9 @@ function ProductForm({ title, form, setForm, onSubmit, submitLabel, loading }) {
             onChange={(e) =>
               setForm((prev) => ({ ...prev, nombre: e.target.value }))
             }
-            className="w-full rounded-xl border border-slate-700 bg-slate-950 px-3 py-2.5 text-slate-100 outline-none transition focus:border-sky-500"
+            className={fieldClass("nombre")}
           />
+          {err("nombre") && <p className="text-xs text-rose-400">Requerido</p>}
         </label>
         <label className="space-y-1.5 text-sm">
           <span className="text-slate-400">Marca *</span>
@@ -40,8 +58,9 @@ function ProductForm({ title, form, setForm, onSubmit, submitLabel, loading }) {
             onChange={(e) =>
               setForm((prev) => ({ ...prev, marca: e.target.value }))
             }
-            className="w-full rounded-xl border border-slate-700 bg-slate-950 px-3 py-2.5 text-slate-100 outline-none transition focus:border-sky-500"
+            className={fieldClass("marca")}
           />
+          {err("marca") && <p className="text-xs text-rose-400">Requerido</p>}
         </label>
         <label className="space-y-1.5 text-sm">
           <span className="text-slate-400">Categoría *</span>
@@ -51,8 +70,11 @@ function ProductForm({ title, form, setForm, onSubmit, submitLabel, loading }) {
             onChange={(e) =>
               setForm((prev) => ({ ...prev, categoria: e.target.value }))
             }
-            className="w-full rounded-xl border border-slate-700 bg-slate-950 px-3 py-2.5 text-slate-100 outline-none transition focus:border-sky-500"
+            className={fieldClass("categoria")}
           />
+          {err("categoria") && (
+            <p className="text-xs text-rose-400">Requerido</p>
+          )}
         </label>
         <label className="space-y-1.5 text-sm">
           <span className="text-slate-400">Tamaño *</span>
@@ -62,8 +84,9 @@ function ProductForm({ title, form, setForm, onSubmit, submitLabel, loading }) {
             onChange={(e) =>
               setForm((prev) => ({ ...prev, tamaño: e.target.value }))
             }
-            className="w-full rounded-xl border border-slate-700 bg-slate-950 px-3 py-2.5 text-slate-100 outline-none transition focus:border-sky-500"
+            className={fieldClass("tamaño")}
           />
+          {err("tamaño") && <p className="text-xs text-rose-400">Requerido</p>}
         </label>
         <label className="space-y-1.5 text-sm md:col-span-2">
           <span className="text-slate-400">Código de barras (opcional)</span>
@@ -79,8 +102,8 @@ function ProductForm({ title, form, setForm, onSubmit, submitLabel, loading }) {
       </div>
       <button
         type="button"
-        onClick={onSubmit}
-        disabled={!canSubmit || loading}
+        onClick={handleClick}
+        disabled={loading}
         className="mt-4 inline-flex w-full items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-sky-500 to-indigo-600 px-4 py-2.5 text-sm font-semibold text-white transition hover:opacity-95 disabled:cursor-not-allowed disabled:opacity-60 sm:w-auto"
       >
         {loading && (
@@ -103,7 +126,9 @@ export default function ProductsCrudTab({
   isDeleting,
   deletingId,
   updatingId,
+  userRole,
 }) {
+  const canEdit = userRole === "administrador";
   const [search, setSearch] = useState("");
   const [createForm, setCreateForm] = useState(EMPTY_FORM);
   const [editId, setEditId] = useState(null);
@@ -176,14 +201,16 @@ export default function ProductsCrudTab({
 
   return (
     <div className="space-y-5">
-      <ProductForm
-        title="Nuevo producto"
-        form={createForm}
-        setForm={setCreateForm}
-        onSubmit={handleCreate}
-        submitLabel="Agregar producto"
-        loading={isCreating}
-      />
+      {canEdit && (
+        <ProductForm
+          title="Nuevo producto"
+          form={createForm}
+          setForm={setCreateForm}
+          onSubmit={handleCreate}
+          submitLabel="Agregar producto"
+          loading={isCreating}
+        />
+      )}
 
       <div className="overflow-hidden rounded-2xl border border-slate-800 bg-slate-900 shadow-sm">
         <div className="border-b border-slate-800 px-5 py-4">
@@ -263,24 +290,26 @@ export default function ProductsCrudTab({
                     </div>
                   </div>
 
-                  <div className="mt-3 grid grid-cols-2 gap-2">
-                    <button
-                      type="button"
-                      onClick={() => startEdit(p)}
-                      disabled={rowLoading}
-                      className="rounded-lg border border-slate-700 px-2.5 py-2 text-xs font-medium text-slate-300 transition hover:border-sky-500 hover:text-sky-300 disabled:opacity-60"
-                    >
-                      Editar
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => onDelete(p)}
-                      disabled={rowLoading}
-                      className="rounded-lg border border-rose-700/60 px-2.5 py-2 text-xs font-medium text-rose-300 transition hover:bg-rose-600/10 disabled:opacity-60"
-                    >
-                      Eliminar
-                    </button>
-                  </div>
+                  {canEdit && (
+                    <div className="mt-3 grid grid-cols-2 gap-2">
+                      <button
+                        type="button"
+                        onClick={() => startEdit(p)}
+                        disabled={rowLoading}
+                        className="rounded-lg border border-slate-700 px-2.5 py-2 text-xs font-medium text-slate-300 transition hover:border-sky-500 hover:text-sky-300 disabled:opacity-60"
+                      >
+                        Editar
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => onDelete(p)}
+                        disabled={rowLoading}
+                        className="rounded-lg border border-rose-700/60 px-2.5 py-2 text-xs font-medium text-rose-300 transition hover:bg-rose-600/10 disabled:opacity-60"
+                      >
+                        Eliminar
+                      </button>
+                    </div>
+                  )}
                 </article>
               );
             })
@@ -357,24 +386,28 @@ export default function ProductsCrudTab({
                       </td>
                       <td className="px-4 py-3 text-slate-300">{p.tamaño}</td>
                       <td className="px-4 py-3">
-                        <div className="flex items-center justify-end gap-2">
-                          <button
-                            type="button"
-                            onClick={() => startEdit(p)}
-                            disabled={rowLoading}
-                            className="rounded-lg border border-slate-700 px-2.5 py-1.5 text-xs font-medium text-slate-300 transition hover:border-sky-500 hover:text-sky-300 disabled:opacity-60"
-                          >
-                            Editar
-                          </button>
-                          <button
-                            type="button"
-                            onClick={() => onDelete(p)}
-                            disabled={rowLoading}
-                            className="rounded-lg border border-rose-700/60 px-2.5 py-1.5 text-xs font-medium text-rose-300 transition hover:bg-rose-600/10 disabled:opacity-60"
-                          >
-                            Eliminar
-                          </button>
-                        </div>
+                        {canEdit ? (
+                          <div className="flex items-center justify-end gap-2">
+                            <button
+                              type="button"
+                              onClick={() => startEdit(p)}
+                              disabled={rowLoading}
+                              className="rounded-lg border border-slate-700 px-2.5 py-1.5 text-xs font-medium text-slate-300 transition hover:border-sky-500 hover:text-sky-300 disabled:opacity-60"
+                            >
+                              Editar
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => onDelete(p)}
+                              disabled={rowLoading}
+                              className="rounded-lg border border-rose-700/60 px-2.5 py-1.5 text-xs font-medium text-rose-300 transition hover:bg-rose-600/10 disabled:opacity-60"
+                            >
+                              Eliminar
+                            </button>
+                          </div>
+                        ) : (
+                          <span className="text-xs text-slate-600">—</span>
+                        )}
                       </td>
 
                       {isEditing && <td className="hidden" />}
