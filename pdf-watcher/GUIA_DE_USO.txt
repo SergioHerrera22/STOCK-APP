@@ -1,0 +1,139 @@
+GUIA DE USO - VIGILANTE DE FACTURAS PDF
+=======================================
+
+QUE HACE
+--------
+Este sistema vigila una carpeta de Windows donde se guardan facturas PDF.
+Cada vez que aparece un PDF nuevo:
+1. Lee el codigo y nombre del producto desde la factura.
+2. Busca el producto en Supabase.
+3. Descuenta el stock automaticamente.
+4. Si el producto todavia no existe en la base, reintenta mas tarde.
+
+
+ARCHIVOS IMPORTANTES
+-------------------
+- INSTALAR.bat
+  Doble clic para instalar todo automaticamente como administrador.
+
+- INSTALAR.ps1
+  Instalador grafico. Lo ejecuta INSTALAR.bat.
+
+- start_now.ps1
+  Inicia el watcher en primer plano para prueba manual.
+
+- watcher.log
+  Log principal para ver si esta funcionando o si hubo errores.
+
+
+INSTALACION EN OTRA PC
+----------------------
+1. Copiar la carpeta completa pdf-watcher a la PC donde se guardan las facturas.
+
+2. Verificar que esa PC tenga Python instalado.
+   Si no tiene Python:
+   - Descargar desde: https://www.python.org/downloads/
+   - Instalar marcando la opcion "Add Python to PATH"
+
+3. Hacer doble clic en INSTALAR.bat.
+
+4. Aceptar la ventana de administrador de Windows.
+
+5. En la ventana del instalador:
+   - Elegir la carpeta real donde se guardan los PDFs.
+   - Elegir la sucursal correcta de esa PC.
+   - Hacer clic en INSTALAR Y ACTIVAR.
+
+6. Esperar a que termine.
+   Cuando finaliza:
+   - Crea el entorno Python
+   - Instala dependencias
+   - Guarda la configuracion
+   - Activa el inicio automatico con Windows
+   - Arranca el watcher
+
+
+PRUEBA RAPIDA
+-------------
+1. Guardar un PDF nuevo dentro de la carpeta configurada.
+2. Esperar unos segundos.
+3. Revisar el archivo watcher.log.
+
+Si todo esta bien, en el log deberia aparecer algo parecido a:
+"Detectado -> codigo=... desc=... cantidad=..."
+"Stock anterior: X -> Nuevo: Y"
+
+
+COMO PROBAR MANUALMENTE
+-----------------------
+Si queres probarlo sin reiniciar Windows:
+
+1. Abrir PowerShell dentro de la carpeta pdf-watcher.
+2. Ejecutar:
+   .\start_now.ps1
+
+3. Guardar un PDF nuevo en la carpeta vigilada.
+
+
+DONDE CAMBIAR LA CONFIGURACION
+------------------------------
+La configuracion queda guardada en el archivo .env.
+Variables principales:
+
+- WATCH_FOLDER
+  Carpeta que vigila el sistema.
+
+- UBICACION_VENTA
+  sucursal_1, sucursal_2, sucursal_3 o deposito_central.
+
+- EDGE_FUNCTION_URL
+  URL de la Edge Function de Supabase.
+
+- API_SECRET_KEY
+  Clave interna para autorizar los descuentos.
+
+
+COMO SABER SI ESTA CORRIENDO SOLO
+---------------------------------
+El instalador crea una Tarea Programada de Windows.
+Para verificarla:
+
+1. Abrir PowerShell como administrador.
+2. Ejecutar:
+   Get-ScheduledTask -TaskName "StockWatcherPDF"
+
+
+SI NO DESCUENTA STOCK
+---------------------
+Revisar en este orden:
+
+1. El PDF realmente quedo en la carpeta vigilada.
+2. El archivo watcher.log muestra que detecto el PDF.
+3. El producto existe en Supabase.
+4. El producto tiene stock cargado en esa ubicacion.
+5. La PC tiene internet.
+
+Notas:
+- Si el producto no existe todavia, el watcher lo deja pendiente y reintenta solo.
+- Si hay dos watchers corriendo al mismo tiempo, puede descontar doble.
+
+
+ARCHIVOS DE REFERENCIA
+----------------------
+- INSTALAR.bat
+- INSTALAR.ps1
+- start_now.ps1
+- setup_autorun.ps1
+- install_service.ps1
+- watcher.py
+- watcher.log
+
+
+RESUMEN CORTO
+-------------
+Para instalar en otra PC:
+1. Copiar carpeta pdf-watcher
+2. Instalar Python si falta
+3. Doble clic en INSTALAR.bat
+4. Elegir carpeta y sucursal
+5. Guardar un PDF y revisar watcher.log
