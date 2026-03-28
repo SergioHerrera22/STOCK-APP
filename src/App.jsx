@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import CsvImport from "./components/CsvImport";
 import StockGlobalTable from "./components/StockGlobalTable";
@@ -763,10 +763,27 @@ export default function App() {
     onSettled: () => setReceivingId(null),
   });
 
-  const pendingCount = (transfersQuery.data ?? []).filter(
+  const visibleTransfers = useMemo(() => {
+    const allTransfers = transfersQuery.data ?? [];
+
+    if (!session || !userRole) return [];
+    if (userRole === "administrador" || userRole === "deposito") {
+      return allTransfers;
+    }
+
+    if (userRole === "sucursal") {
+      const branchId = perfil?.sucursal_id;
+      if (!branchId) return [];
+      return allTransfers.filter((item) => item.destino === branchId);
+    }
+
+    return [];
+  }, [transfersQuery.data, session, userRole, perfil?.sucursal_id]);
+
+  const pendingCount = visibleTransfers.filter(
     (item) => item.estado === "pendiente",
   ).length;
-  const inTransitCount = (transfersQuery.data ?? []).filter(
+  const inTransitCount = visibleTransfers.filter(
     (item) => item.estado === "en_transito",
   ).length;
   const totalProducts = stockQuery.data?.length ?? 0;
@@ -1145,7 +1162,7 @@ export default function App() {
             {activeTab === "pedidos" && canAccessTab("pedidos") && (
               <InternalOrderForm
                 productos={productosQuery.data}
-                pendingOrders={transfersQuery.data}
+                pendingOrders={visibleTransfers}
                 onSubmit={(payload) => createOrderMutation.mutate(payload)}
                 onCancelOrder={(pedido, motivo) => {
                   if (!session) {
@@ -1160,7 +1177,7 @@ export default function App() {
             )}
             {activeTab === "despacho" && canAccessTab("despacho") && (
               <DispatchPanel
-                pedidos={transfersQuery.data}
+                pedidos={visibleTransfers}
                 isLoading={transfersQuery.isLoading}
                 dispatchingId={dispatchingId}
                 receivingId={receivingId}
